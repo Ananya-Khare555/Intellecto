@@ -37,7 +37,11 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+<<<<<<< HEAD
           Welcome 
+=======
+          Welcome back
+>>>>>>> f4ca06c4cc92bb74902126cdd1cbdea9eb4cbcc7
         </h1>
         <p className="text-muted-foreground">
           Enter your credentials to access your account

@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/components/auth/firebase"; // Adjust path if needed
+import { auth } from "@/components/auth/firebase"; 
 import { useNavigate } from "react-router-dom";
 
 interface LoginFormProps {
@@ -37,7 +37,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-          Welcome back
+          Welcome 
         </h1>
         <p className="text-muted-foreground">
           Enter your credentials to access your account

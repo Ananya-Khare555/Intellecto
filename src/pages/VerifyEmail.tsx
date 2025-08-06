@@ -3,6 +3,8 @@ import { auth } from "@/components/auth/firebase";
 import { sendEmailVerification, User } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Mail, ShieldCheck, RefreshCw } from "lucide-react";
 
 export const VerifyEmail = () => {
     const [isLoading, setIsLoading] = useState(false);
@@ -25,7 +27,6 @@ export const VerifyEmail = () => {
         try {
             await sendEmailVerification(user);
             setCountdown(30);
-            alert("Verification email resent!");
         } catch (error) {
             console.error("Error resending verification:", error);
             alert("Failed to resend verification email");
@@ -40,11 +41,8 @@ export const VerifyEmail = () => {
         }
 
         try {
-            // Force refresh the user's ID token which contains verification status
             await user.getIdToken(true);
             await user.reload();
-            
-            // Get the fresh user object
             const refreshedUser = auth.currentUser;
             if (refreshedUser?.emailVerified) {
                 navigate("/dashboard");
@@ -66,9 +64,7 @@ export const VerifyEmail = () => {
 
         const interval = setInterval(async () => {
             const isVerified = await checkVerification();
-            if (isVerified) {
-                clearInterval(interval);
-            }
+            if (isVerified) clearInterval(interval);
         }, 2000);
 
         const timer = setInterval(() => {
@@ -82,44 +78,68 @@ export const VerifyEmail = () => {
     }, [user, navigate]);
 
     return (
-        <div className="max-w-md mx-auto p-6 space-y-6 text-center">
-            <div className="space-y-2">
-                <h1 className="text-3xl font-bold">Verify Your Email</h1>
-                <p className="text-muted-foreground">
-                    We've sent a verification link to <strong>{user?.email}</strong>
-                </p>
+        <div className="min-h-screen gradient-background flex items-center justify-center p-4 relative overflow-hidden">
+            {/* Floating animated elements */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-1/4 left-1/4 w-16 h-16 rounded-full bg-purple-500/10 animate-float animation-delay-100"></div>
+                <div className="absolute top-1/3 right-1/3 w-24 h-24 rounded-full bg-primary/5 animate-float animation-delay-300"></div>
+                <div className="absolute bottom-1/4 left-1/3 w-20 h-20 rounded-full bg-accent/10 animate-float animation-delay-500"></div>
+                <div className="absolute bottom-1/3 right-1/4 w-16 h-16 rounded-full bg-purple-500/15 animate-float animation-delay-700"></div>
+                
+                {/* Animated icons */}
+                <Mail className="absolute top-20 left-20 text-primary/20 w-12 h-12 animate-float animation-delay-200" />
+                <ShieldCheck className="absolute bottom-20 right-20 text-accent/20 w-12 h-12 animate-float animation-delay-400" />
+                <RefreshCw className="absolute top-1/2 right-40 text-purple-500/20 w-10 h-10 animate-spin-slow" />
             </div>
 
-            <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                    Please check your inbox and click the link to verify your account.
-                </p>
+            {/* Main card with glass effect */}
+            <Card className="glass w-full max-w-md relative z-10 animate-scale-in hover-lift">
+                <CardHeader className="space-y-1">
+                    <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent text-center">
+                        Verify Your Email
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="text-center space-y-2">
+                        <p className="text-muted-foreground">
+                            We've sent a verification link to <strong className="text-primary">{user?.email}</strong>
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                            Please check your inbox and click the link to verify your account.
+                        </p>
+                    </div>
 
-                <Button
-                    onClick={handleResend}
-                    disabled={isLoading || countdown > 0}
-                    className="w-full"
-                >
-                    {isLoading
-                        ? "Sending..."
-                        : countdown > 0
-                            ? `Resend in ${countdown}s`
-                            : "Resend Verification Email"}
-                </Button>
+                    <div className="space-y-4">
+                        <Button
+                            onClick={handleResend}
+                            disabled={isLoading || countdown > 0}
+                            className="w-full hover-glow"
+                        >
+                            {isLoading ? (
+                                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                            ) : countdown > 0 ? (
+                                `Resend in ${countdown}s`
+                            ) : (
+                                "Resend Verification Email"
+                            )}
+                        </Button>
 
-                <Button
-                    variant="outline"
-                    onClick={async () => {
-                        const isVerified = await checkVerification();
-                        if (!isVerified) {
-                            alert("Please verify your email first by clicking the link we sent you. If you just verified, try again in a few seconds.");
-                        }
-                    }}
-                    className="w-full"
-                >
-                    I've verified my email
-                </Button>
-            </div>
+                        <Button
+                            variant="outline"
+                            onClick={async () => {
+                                const isVerified = await checkVerification();
+                                if (!isVerified) {
+                                    alert("Please verify your email first by clicking the link we sent you. If you just verified, try again in a few seconds.");
+                                }
+                            }}
+                            className="w-full hover-scale"
+                        >
+                            <ShieldCheck className="mr-2 h-4 w-4" />
+                            I've verified my email
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 };

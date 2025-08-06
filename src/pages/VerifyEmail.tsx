@@ -3,11 +3,8 @@ import { auth } from "@/components/auth/firebase";
 import { sendEmailVerification, User } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-<<<<<<< HEAD
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, ShieldCheck, RefreshCw } from "lucide-react";
-=======
->>>>>>> f4ca06c4cc92bb74902126cdd1cbdea9eb4cbcc7
 
 export const VerifyEmail = () => {
     const [isLoading, setIsLoading] = useState(false);
@@ -30,10 +27,6 @@ export const VerifyEmail = () => {
         try {
             await sendEmailVerification(user);
             setCountdown(30);
-<<<<<<< HEAD
-=======
-            alert("Verification email resent!");
->>>>>>> f4ca06c4cc92bb74902126cdd1cbdea9eb4cbcc7
         } catch (error) {
             console.error("Error resending verification:", error);
             alert("Failed to resend verification email");
@@ -48,16 +41,8 @@ export const VerifyEmail = () => {
         }
 
         try {
-<<<<<<< HEAD
             await user.getIdToken(true);
             await user.reload();
-=======
-            // Force refresh the user's ID token which contains verification status
-            await user.getIdToken(true);
-            await user.reload();
-            
-            // Get the fresh user object
->>>>>>> f4ca06c4cc92bb74902126cdd1cbdea9eb4cbcc7
             const refreshedUser = auth.currentUser;
             if (refreshedUser?.emailVerified) {
                 navigate("/dashboard");
@@ -79,13 +64,7 @@ export const VerifyEmail = () => {
 
         const interval = setInterval(async () => {
             const isVerified = await checkVerification();
-<<<<<<< HEAD
             if (isVerified) clearInterval(interval);
-=======
-            if (isVerified) {
-                clearInterval(interval);
-            }
->>>>>>> f4ca06c4cc92bb74902126cdd1cbdea9eb4cbcc7
         }, 2000);
 
         const timer = setInterval(() => {
@@ -99,7 +78,6 @@ export const VerifyEmail = () => {
     }, [user, navigate]);
 
     return (
-<<<<<<< HEAD
         <div className="min-h-screen gradient-background flex items-center justify-center p-4 relative overflow-hidden">
             {/* Floating animated elements */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -162,46 +140,6 @@ export const VerifyEmail = () => {
                     </div>
                 </CardContent>
             </Card>
-=======
-        <div className="max-w-md mx-auto p-6 space-y-6 text-center">
-            <div className="space-y-2">
-                <h1 className="text-3xl font-bold">Verify Your Email</h1>
-                <p className="text-muted-foreground">
-                    We've sent a verification link to <strong>{user?.email}</strong>
-                </p>
-            </div>
-
-            <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                    Please check your inbox and click the link to verify your account.
-                </p>
-
-                <Button
-                    onClick={handleResend}
-                    disabled={isLoading || countdown > 0}
-                    className="w-full"
-                >
-                    {isLoading
-                        ? "Sending..."
-                        : countdown > 0
-                            ? `Resend in ${countdown}s`
-                            : "Resend Verification Email"}
-                </Button>
-
-                <Button
-                    variant="outline"
-                    onClick={async () => {
-                        const isVerified = await checkVerification();
-                        if (!isVerified) {
-                            alert("Please verify your email first by clicking the link we sent you. If you just verified, try again in a few seconds.");
-                        }
-                    }}
-                    className="w-full"
-                >
-                    I've verified my email
-                </Button>
-            </div>
->>>>>>> f4ca06c4cc92bb74902126cdd1cbdea9eb4cbcc7
         </div>
     );
 };

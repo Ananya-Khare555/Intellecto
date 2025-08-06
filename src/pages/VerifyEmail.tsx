@@ -5,12 +5,15 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, ShieldCheck, RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export const VerifyEmail = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [countdown, setCountdown] = useState(30);
     const navigate = useNavigate();
     const [user, setUser] = useState<User | null>(auth.currentUser);
+
+    const { toast } = useToast();
 
     // Keep user reference updated
     useEffect(() => {
@@ -29,7 +32,10 @@ export const VerifyEmail = () => {
             setCountdown(30);
         } catch (error) {
             console.error("Error resending verification:", error);
-            alert("Failed to resend verification email");
+            toast({
+                title: "Error",
+                description: "Failed to resend verification email.",
+            });
         }
         setIsLoading(false);
     };
@@ -129,7 +135,10 @@ export const VerifyEmail = () => {
                             onClick={async () => {
                                 const isVerified = await checkVerification();
                                 if (!isVerified) {
-                                    alert("Please verify your email first by clicking the link we sent you. If you just verified, try again in a few seconds.");
+                                    toast({
+                                        title: "Verification Required",
+                                        description: "Please verify your email first.",
+                                    });
                                 }
                             }}
                             className="w-full hover-scale"

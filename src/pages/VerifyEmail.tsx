@@ -5,12 +5,37 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, ShieldCheck, RefreshCw } from "lucide-react";
+import { db } from "@/components/auth/firebase";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 
 export const VerifyEmail = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [countdown, setCountdown] = useState(30);
     const navigate = useNavigate();
     const [user, setUser] = useState<User | null>(auth.currentUser);
+
+    //addition
+    const storeVerifiedUserData = async (user: User) => {
+      try {
+          const userRef = doc(db, "users", user.uid);
+          const userSnap = await getDoc(userRef);
+
+          if (!userSnap.exists()) {
+              await setDoc(userRef, {
+                  email: user.email,
+                  name: user.displayName || "Anonymous",
+                  createdAt: new Date(),
+                  userId: user.uid,
+              });
+              console.log("✅ Verified user data stored successfully.");
+          } else {
+              console.log("ℹ️ User already exists in DB.");
+          }
+      } catch (error) {
+          console.error("❌ Error saving user data:", error);
+      }
+  };
+    //addition done
 
     // Keep user reference updated
     useEffect(() => {
@@ -44,7 +69,16 @@ export const VerifyEmail = () => {
             await user.getIdToken(true);
             await user.reload();
             const refreshedUser = auth.currentUser;
+            //addition
             if (refreshedUser?.emailVerified) {
+                console.log("Trying to write user data:", {
+                    name: user.displayName,
+                    email: user.email,
+                    userId: user.uid,
+                });
+                //addition done
+
+                await storeVerifiedUserData(refreshedUser);
                 navigate("/dashboard");
                 return true;
             }

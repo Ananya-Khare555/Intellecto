@@ -6,8 +6,11 @@ import { UpcomingInterviews } from '../components/UpcomingInterviews';
 import { RecentActivity } from '../components/RecentActivity';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { auth } from '@/components/auth/firebase';
+import { useTheme } from 'next-themes';
 
 export const Dashboard: React.FC = () => {
+    const { theme, systemTheme } = useTheme();
+  console.log('Current theme:', theme, 'System theme:', systemTheme);
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent">
       {/* Header */}
@@ -17,11 +20,11 @@ export const Dashboard: React.FC = () => {
             <div className="flex items-center space-x-4">
               <div className="gradient-primary p-2 rounded-lg">
                 <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
-                  <span className="text-primary font-bold text-lg">IV</span>
+                  <span className="text-primary font-bold text-lg">⭐</span>
                 </div>
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">InterviewBloom</h1>
+                <h1 className="text-2xl font-bold text-foreground">Intellecto</h1>
                 <p className="text-sm text-muted-foreground">Student Interview Portal</p>
               </div>
             </div>
@@ -57,7 +60,7 @@ export const Dashboard: React.FC = () => {
                   <User className="w-4 h-4 text-white" />
                 </div>
                 <div className="hidden md:block">
-                  <p className="text-sm font-medium text-foreground">Alex Rivera</p>
+                    <p className="text-sm font-medium text-foreground">{auth.currentUser?.displayName || auth.currentUser?.email || "User"}</p>
                   <p className="text-xs text-muted-foreground">Computer Science Student</p>
                 </div>
                 <button onClick={() => auth.signOut()} className="p-1 rounded hover:bg-accent transition-colors">
@@ -73,7 +76,7 @@ export const Dashboard: React.FC = () => {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Welcome Section */}
         <div className="mb-8 animate-fade-up">
-          <h2 className="text-3xl font-bold text-foreground mb-2">Welcome, Alex! 👋</h2>
+          <h2 className="text-3xl font-bold text-foreground mb-2">Welcome, {auth.currentUser?.displayName} 👋</h2>
           <p className="text-muted-foreground">Ready to ace your upcoming interviews? Let's get started!</p>
         </div>
 

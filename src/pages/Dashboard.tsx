@@ -5,6 +5,7 @@ import { QuickActions } from '../components/QuickActions';
 import { UpcomingInterviews } from '../components/UpcomingInterviews';
 import { RecentActivity } from '../components/RecentActivity';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { auth } from '@/components/auth/firebase';
 
 export const Dashboard: React.FC = () => {
   return (
@@ -59,7 +60,7 @@ export const Dashboard: React.FC = () => {
                   <p className="text-sm font-medium text-foreground">Alex Rivera</p>
                   <p className="text-xs text-muted-foreground">Computer Science Student</p>
                 </div>
-                <button className="p-1 rounded hover:bg-accent transition-colors">
+                <button onClick={() => auth.signOut()} className="p-1 rounded hover:bg-accent transition-colors">
                   <LogOut className="w-4 h-4 text-muted-foreground" ></LogOut>
                 </button>
               </div>
@@ -72,7 +73,7 @@ export const Dashboard: React.FC = () => {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Welcome Section */}
         <div className="mb-8 animate-fade-up">
-          <h2 className="text-3xl font-bold text-foreground mb-2">Welcome back, Alex! 👋</h2>
+          <h2 className="text-3xl font-bold text-foreground mb-2">Welcome, Alex! 👋</h2>
           <p className="text-muted-foreground">Ready to ace your upcoming interviews? Let's get started!</p>
         </div>
 

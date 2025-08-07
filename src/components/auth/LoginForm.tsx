@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { sendPasswordResetEmail, signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/components/auth/firebase"; 
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
@@ -16,8 +17,10 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
+  const [resetSent, setResetSent] = useState(false);
+
   const navigate = useNavigate();
+  const {toast} = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -28,10 +31,42 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     navigate("/dashboard"); // Redirect to dashboard
   } catch (error: any) {
     console.error("Login error:", error.message);
-    alert(error.message);
+
+    toast({
+      title: "Error",
+      description: error.message,
+    });
   }
   setIsLoading(false);
 };
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast({
+        title: "Error",
+        color: "purple",
+        description: "Please enter your email to reset password.",
+      })
+
+      
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth,email);
+      setResetSent(true);
+      toast({
+        title: "Password Reset",
+        description: "Password reset email sent! Check your inbox.",
+      });
+    } catch (error: any) {
+      console.error("Error sending password reset email:", error.message);
+      toast({
+        title: "Error",
+        description: error.message,
+      });
+    }
+  };
+  
+
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -86,14 +121,17 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
 
         <div className="flex items-center justify-between text-sm">
           <label className="flex items-center space-x-2">
-            <input type="checkbox" />
-            <span>Remember me</span>
           </label>
-          <button type="button" className="text-primary hover:underline">
+          <button onClick={handleForgotPassword} type="button" className="text-primary hover:underline">
             Forgot password?
           </button>
         </div>
       </div>
+      {resetSent && (
+        <div className="text-green-600 text-sm mt-2 animate-fade-up">
+          Password reset email sent! Check your inbox.
+        </div>
+      )}
 
       <Button type="submit" disabled={isLoading} className="w-full">
         {isLoading ? "Signing in..." : "Sign in"}

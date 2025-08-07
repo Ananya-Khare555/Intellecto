@@ -7,6 +7,7 @@ import { auth } from "@/components/auth/firebase";
 import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { Toast } from "@radix-ui/react-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface SignupFormProps {
   onSwitchToLogin: () => void;
@@ -22,6 +23,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
     confirmPassword: ""
   });
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const navigate = useNavigate();
 
@@ -32,7 +34,10 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match");
+      toast({
+        title: "Error",
+        description: "Passwords do not match.",
+      });
       return;
     }
 
@@ -58,7 +63,10 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
       
     } catch (error: any) {
       console.error("Signup error:", error.message);
-      alert(error.message);
+      toast({
+        title: "Error",
+        description: error.message,
+      });
     }
     setIsLoading(false);
   };

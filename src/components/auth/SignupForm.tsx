@@ -7,10 +7,7 @@ import { auth } from "@/components/auth/firebase";
 import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { Toast } from "@radix-ui/react-toast";
-<<<<<<< HEAD
-=======
 import { useToast } from "@/hooks/use-toast";
->>>>>>> lakshya
 
 interface SignupFormProps {
   onSwitchToLogin: () => void;
@@ -26,10 +23,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
     confirmPassword: ""
   });
   const [isLoading, setIsLoading] = useState(false);
-<<<<<<< HEAD
-=======
   const { toast } = useToast();
->>>>>>> lakshya
 
   const navigate = useNavigate();
 

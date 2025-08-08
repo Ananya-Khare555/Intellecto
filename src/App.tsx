@@ -12,6 +12,8 @@ import { EmailVerificationChecker } from "./components/auth/EmailVerificationChe
 import { VerifyEmail } from "./pages/VerifyEmail";
 import { auth } from "./components/auth/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
+import { SettingsPage } from "./pages/SettingsPage";
+import ProfilePage from "./pages/ProfilePage";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +64,12 @@ const App = () => (
           {/* Verification page */}
           <Route path="/verify-email" element={<VerifyEmail />} />
           
+          {/* Settings page */} 
+          <Route path="/settings" element={<SettingsPage />} />
+
+          {/* profile page */}
+          <Route path="/profile" element={<ProfilePage />} />
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

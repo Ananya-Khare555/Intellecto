@@ -15,32 +15,32 @@ export const VerifyEmail = () => {
     const [countdown, setCountdown] = useState(30);
     const navigate = useNavigate();
     const [user, setUser] = useState<User | null>(auth.currentUser);
-  
+
     const { toast } = useToast();
 
 
     const storeVerifiedUserData = async (user: User) => {
-      try {
-          const userRef = doc(db, "users", user.uid);
-          const userSnap = await getDoc(userRef);
+        try {
+            const userRef = doc(db, "users", user.uid);
+            const userSnap = await getDoc(userRef);
 
-          if (!userSnap.exists()) {
-              await setDoc(userRef, {
-                  email: user.email,
-                  name: user.displayName || "Anonymous",
-                  createdAt: new Date(),
-                  userId: user.uid,
-              });
-              console.log("✅ Verified user data stored successfully.");
-          } else {
-              console.log("ℹ️ User already exists in DB.");
-          }
-      } catch (error) {
-          console.error("❌ Error saving user data:", error);
-      }
-  };
+            if (!userSnap.exists()) {
+                await setDoc(userRef, {
+                    email: user.email,
+                    name: user.displayName || "Anonymous",
+                    createdAt: new Date(),
+                    userId: user.uid,
+                });
+                console.log("✅ Verified user data stored successfully.");
+            } else {
+                console.log("ℹ️ User already exists in DB.");
+            }
+        } catch (error) {
+            console.error("❌ Error saving user data:", error);
+        }
+    };
 
-    
+
 
     // Keep user reference updated
     useEffect(() => {
@@ -127,7 +127,7 @@ export const VerifyEmail = () => {
                 <div className="absolute top-1/3 right-1/3 w-24 h-24 rounded-full bg-primary/5 animate-float animation-delay-300"></div>
                 <div className="absolute bottom-1/4 left-1/3 w-20 h-20 rounded-full bg-accent/10 animate-float animation-delay-500"></div>
                 <div className="absolute bottom-1/3 right-1/4 w-16 h-16 rounded-full bg-purple-500/15 animate-float animation-delay-700"></div>
-                
+
                 {/* Animated icons */}
                 <Mail className="absolute top-20 left-20 text-primary/20 w-12 h-12 animate-float animation-delay-200" />
                 <ShieldCheck className="absolute bottom-20 right-20 text-accent/20 w-12 h-12 animate-float animation-delay-400" />

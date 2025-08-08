@@ -12,7 +12,12 @@ import { EmailVerificationChecker } from "./components/auth/EmailVerificationChe
 import { VerifyEmail } from "./pages/VerifyEmail";
 import { auth } from "./components/auth/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
+<<<<<<< HEAD
 import { InterviewPlatform } from "./components/interview/InterviewPlatform";
+=======
+import { SettingsPage } from "./pages/SettingsPage";
+import ProfilePage from "./pages/ProfilePage";
+>>>>>>> 636b32b08845ce1c4998c526dce8412d3e5f61f5
 
 const queryClient = new QueryClient();
 
@@ -66,6 +71,12 @@ const App = () => (
           {/* Verification page */}
           <Route path="/verify-email" element={<VerifyEmail />} />
           
+          {/* Settings page */} 
+          <Route path="/settings" element={<SettingsPage />} />
+
+          {/* profile page */}
+          <Route path="/profile" element={<ProfilePage />} />
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

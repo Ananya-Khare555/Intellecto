@@ -43,7 +43,6 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     if (!email) {
       toast({
         title: "Error",
-        color: "purple",
         description: "Please enter your email to reset password.",
       })
 

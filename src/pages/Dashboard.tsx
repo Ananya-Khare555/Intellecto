@@ -6,8 +6,12 @@ import { UpcomingInterviews } from '../components/UpcomingInterviews';
 import { RecentActivity } from '../components/RecentActivity';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { auth } from '@/components/auth/firebase';
+import { useNavigate } from 'react-router-dom';
 
 export const Dashboard: React.FC = () => {
+
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent">
       {/* Header */}
@@ -17,49 +21,53 @@ export const Dashboard: React.FC = () => {
             <div className="flex items-center space-x-4">
               <div className="gradient-primary p-2 rounded-lg">
                 <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
-                  <span className="text-primary font-bold text-lg">IV</span>
+                  <span className="text-primary font-bold text-lg">⭐</span>
                 </div>
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">InterviewBloom</h1>
+                <h1 className="text-2xl font-bold text-foreground">Intellecto</h1>
                 <p className="text-sm text-muted-foreground">Student Interview Portal</p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               {/* Search */}
               <div className="relative hidden md:block">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Search candidates, interviews..."
                   className="pl-10 pr-4 py-2 rounded-lg border border-border bg-card text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300 w-64"
                 />
               </div>
-              
+
               {/* Theme Toggle */}
               <ThemeToggle />
-              
+
               {/* Notifications */}
               <button className="p-2 rounded-lg hover:bg-accent transition-all duration-300 hover-scale relative">
-                <Bell className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
+                <Bell className="w-5 h-5 text-muted-foreground transition-colors" />
                 <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse-soft"></span>
               </button>
-              
+
               {/* Settings */}
-              <button className="p-2 rounded-lg hover:bg-accent transition-all duration-300 hover-scale">
-                <Settings className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
+              <button onClick={() => navigate('/settings')} className="p-2 rounded-lg hover:bg-accent transition-all duration-300 hover-scale">
+                <Settings className="w-5 h-5 text-muted-foreground transition-colors" />
               </button>
-              
+
               {/* User Menu */}
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 gradient-primary rounded-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-white" />
+              <button onClick={()=> navigate('/profile')} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-accent transition-all duration-300 hover-scale">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 gradient-primary rounded-full flex items-center justify-center">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="hidden md:block">
+                    <p className="text-sm font-medium text-foreground">{auth.currentUser?.displayName || auth.currentUser?.email || "User"}</p>
+                    <p className="text-xs text-muted-foreground">Computer Science Student</p>
+                  </div>
                 </div>
-                <div className="hidden md:block">
-                  <p className="text-sm font-medium text-foreground">Alex Rivera</p>
-                  <p className="text-xs text-muted-foreground">Computer Science Student</p>
-                </div>
+              </button>
+              <div>
                 <button onClick={() => auth.signOut()} className="p-1 rounded hover:bg-accent transition-colors">
                   <LogOut className="w-4 h-4 text-muted-foreground" ></LogOut>
                 </button>
@@ -73,7 +81,7 @@ export const Dashboard: React.FC = () => {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Welcome Section */}
         <div className="mb-8 animate-fade-up">
-          <h2 className="text-3xl font-bold text-foreground mb-2">Welcome, Alex! 👋</h2>
+          <h2 className="text-3xl font-bold text-foreground mb-2">Welcome, {auth.currentUser?.displayName} 👋</h2>
           <p className="text-muted-foreground">Ready to ace your upcoming interviews? Let's get started!</p>
         </div>
 

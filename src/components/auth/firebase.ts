@@ -1,18 +1,20 @@
 // Import the functions
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore"; //added
 
 // Your config
 const firebaseConfig = {
-  apiKey: "AIzaSyDPpG5ATbt8qzLFw_UrWESf8LeXamwSgaU",
-  authDomain: "skillshield-122d0.firebaseapp.com",
-  projectId: "skillshield-122d0",
-  storageBucket: "skillshield-122d0.firebasestorage.app",
-  messagingSenderId: "354444812391",
-  appId: "1:354444812391:web:e439ff0106e5cca2d574c2",
-  measurementId: "G-Q0TT6S27HM"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const db = getFirestore(app); //added

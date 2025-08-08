@@ -5,12 +5,42 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, ShieldCheck, RefreshCw } from "lucide-react";
+import { db } from "@/components/auth/firebase";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+
 
 export const VerifyEmail = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [countdown, setCountdown] = useState(30);
     const navigate = useNavigate();
     const [user, setUser] = useState<User | null>(auth.currentUser);
+
+    const { toast } = useToast();
+
+
+    const storeVerifiedUserData = async (user: User) => {
+        try {
+            const userRef = doc(db, "users", user.uid);
+            const userSnap = await getDoc(userRef);
+
+            if (!userSnap.exists()) {
+                await setDoc(userRef, {
+                    email: user.email,
+                    name: user.displayName || "Anonymous",
+                    createdAt: new Date(),
+                    userId: user.uid,
+                });
+                console.log("✅ Verified user data stored successfully.");
+            } else {
+                console.log("ℹ️ User already exists in DB.");
+            }
+        } catch (error) {
+            console.error("❌ Error saving user data:", error);
+        }
+    };
+
+
 
     // Keep user reference updated
     useEffect(() => {
@@ -29,7 +59,10 @@ export const VerifyEmail = () => {
             setCountdown(30);
         } catch (error) {
             console.error("Error resending verification:", error);
-            alert("Failed to resend verification email");
+            toast({
+                title: "Error",
+                description: "Failed to resend verification email.",
+            });
         }
         setIsLoading(false);
     };
@@ -44,7 +77,16 @@ export const VerifyEmail = () => {
             await user.getIdToken(true);
             await user.reload();
             const refreshedUser = auth.currentUser;
+            //addition
             if (refreshedUser?.emailVerified) {
+                console.log("Trying to write user data:", {
+                    name: user.displayName,
+                    email: user.email,
+                    userId: user.uid,
+                });
+                //addition done
+
+                await storeVerifiedUserData(refreshedUser);
                 navigate("/dashboard");
                 return true;
             }
@@ -85,7 +127,7 @@ export const VerifyEmail = () => {
                 <div className="absolute top-1/3 right-1/3 w-24 h-24 rounded-full bg-primary/5 animate-float animation-delay-300"></div>
                 <div className="absolute bottom-1/4 left-1/3 w-20 h-20 rounded-full bg-accent/10 animate-float animation-delay-500"></div>
                 <div className="absolute bottom-1/3 right-1/4 w-16 h-16 rounded-full bg-purple-500/15 animate-float animation-delay-700"></div>
-                
+
                 {/* Animated icons */}
                 <Mail className="absolute top-20 left-20 text-primary/20 w-12 h-12 animate-float animation-delay-200" />
                 <ShieldCheck className="absolute bottom-20 right-20 text-accent/20 w-12 h-12 animate-float animation-delay-400" />
@@ -129,7 +171,10 @@ export const VerifyEmail = () => {
                             onClick={async () => {
                                 const isVerified = await checkVerification();
                                 if (!isVerified) {
-                                    alert("Please verify your email first by clicking the link we sent you. If you just verified, try again in a few seconds.");
+                                    toast({
+                                        title: "Verification Required",
+                                        description: "Please verify your email first.",
+                                    });
                                 }
                             }}
                             className="w-full hover-scale"

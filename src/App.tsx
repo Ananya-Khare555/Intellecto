@@ -12,12 +12,9 @@ import { EmailVerificationChecker } from "./components/auth/EmailVerificationChe
 import { VerifyEmail } from "./pages/VerifyEmail";
 import { auth } from "./components/auth/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-<<<<<<< HEAD
 import { InterviewPlatform } from "./components/interview/InterviewPlatform";
-=======
 import { SettingsPage } from "./pages/SettingsPage";
 import ProfilePage from "./pages/ProfilePage";
->>>>>>> 636b32b08845ce1c4998c526dce8412d3e5f61f5
 
 const queryClient = new QueryClient();
 

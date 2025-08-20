@@ -1,8 +1,8 @@
+// src/components/ui/toast.tsx
 import * as React from "react"
 import * as ToastPrimitives from "@radix-ui/react-toast"
 import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "lucide-react"
-
 import { cn } from "@/lib/utils"
 
 const ToastProvider = ToastPrimitives.Provider
@@ -27,9 +27,16 @@ const toastVariants = cva(
   {
     variants: {
       variant: {
-        default: "border bg-background text-foreground",
-        destructive:
-          "destructive group border-destructive bg-destructive text-destructive-foreground",
+        default: cn(
+          "border border-primary/30 bg-background/90 backdrop-blur-md",
+          "shadow-[0_0_20px_-5px_hsl(var(--primary)/0.3)]",
+          "hover:shadow-[0_0_30px_-5px_hsl(var(--primary)/0.4)]",
+          "transition-all duration-300 ease-in-out"
+        ),
+        destructive: cn(
+          "destructive group border-destructive/30 bg-destructive/90 backdrop-blur-md text-destructive-foreground",
+          "shadow-[0_0_20px_-5px_hsl(var(--destructive)/0.3)]"
+        ),
       },
     },
     defaultVariants: {
@@ -48,7 +55,16 @@ const Toast = React.forwardRef<
       ref={ref}
       className={cn(toastVariants({ variant }), className)}
       {...props}
-    />
+    >
+      {/* Subtle border glow effect (removed the big purple dot) */}
+      <div 
+        className="absolute inset-0 rounded-md pointer-events-none border border-primary/10"
+        style={{
+          boxShadow: "inset 0 0 10px hsl(var(--primary)/0.1)"
+        }}
+      />
+      {props.children}
+    </ToastPrimitives.Root>
   )
 })
 Toast.displayName = ToastPrimitives.Root.displayName
@@ -61,6 +77,7 @@ const ToastAction = React.forwardRef<
     ref={ref}
     className={cn(
       "inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
+      "border-primary/30 hover:bg-primary/10 hover:border-primary/50 focus:ring-primary/30",
       className
     )}
     {...props}
@@ -76,6 +93,7 @@ const ToastClose = React.forwardRef<
     ref={ref}
     className={cn(
       "absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
+      "hover:bg-primary/10 focus:ring-primary/30",
       className
     )}
     toast-close=""
@@ -92,7 +110,10 @@ const ToastTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Title
     ref={ref}
-    className={cn("text-sm font-semibold", className)}
+    className={cn(
+      "text-sm font-semibold",
+      className
+    )}
     {...props}
   />
 ))
@@ -104,7 +125,10 @@ const ToastDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Description
     ref={ref}
-    className={cn("text-sm opacity-90", className)}
+    className={cn(
+      "text-sm opacity-90",
+      className
+    )}
     {...props}
   />
 ))

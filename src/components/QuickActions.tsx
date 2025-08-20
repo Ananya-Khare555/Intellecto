@@ -1,6 +1,7 @@
 import React from 'react';
 import { Video, Plus, Settings, BarChart3 } from 'lucide-react';
 import { InterviewIcon, CodingIcon, AnalyticsIcon, CalendarIcon } from './AnimatedSVGs';
+import { useNavigate } from 'react-router-dom';
 
 interface ActionCardProps {
   title: string;
@@ -39,6 +40,8 @@ const ActionCard: React.FC<ActionCardProps> = ({
 );
 
 export const QuickActions: React.FC = () => {
+  const navigate = useNavigate();
+
   const actions = [
     {
       title: 'Join Interview',
@@ -62,11 +65,12 @@ export const QuickActions: React.FC = () => {
       delay: '0.3s'
     },
     {
-      title: 'My Schedule',
-      description: 'View upcoming interviews',
-      icon: <Settings className="w-8 h-8 text-white" />,
-      animatedIcon: <CalendarIcon className="w-16 h-16" />,
-      delay: '0.4s'
+      title: 'ATS Score Checker',
+      description: 'Check your resume ATS Score',
+      icon: <BarChart3 className="w-8 h-8 text-white" />,  // You can swap to another Lucide icon if you prefer
+      animatedIcon: <AnalyticsIcon className="w-16 h-16" />,
+      delay: '0.4s',
+      onClick: () => navigate("/ats-checker")
     }
   ];
 
@@ -78,7 +82,7 @@ export const QuickActions: React.FC = () => {
           <ActionCard 
             key={index} 
             {...action}
-            onClick={() => console.log(`${action.title} clicked`)}
+            // onClick={() => console.log(`${action.title} clicked`)}
           />
         ))}
       </div>

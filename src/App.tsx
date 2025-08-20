@@ -12,6 +12,7 @@ import { EmailVerificationChecker } from "./components/auth/EmailVerificationChe
 import { VerifyEmail } from "./pages/VerifyEmail";
 import { auth } from "./components/auth/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
+import ATSChecker from "./pages/ATSChecker";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,17 @@ const App = () => (
                 </EmailVerificationChecker>
               </ProtectedRoute>
             } 
+          />
+
+          <Route 
+            path="/ats-checker" 
+            element={
+              <ProtectedRoute>
+                <EmailVerificationChecker>
+                  <ATSChecker />
+                </EmailVerificationChecker>
+              </ProtectedRoute>
+            }
           />
           
           {/* Verification page */}

@@ -50,11 +50,8 @@
     "framer-motion": "^12.23.12",
     "input-otp": "^1.2.4",
     "lucide-react": "^0.462.0",
-<<<<<<< HEAD
     "monaco": "^1.201704190613.0",
-=======
     "mammoth": "^1.10.0",
->>>>>>> origin/ananya
     "next-themes": "^0.3.0",
     "openai": "^5.12.2",
     "pdf-parse": "^1.1.1",

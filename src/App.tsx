@@ -13,6 +13,7 @@ import { VerifyEmail } from "./pages/VerifyEmail";
 import { auth } from "./components/auth/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { InterviewPlatform } from "./components/interview/InterviewPlatform";
+import ATSChecker from "./pages/ATSChecker";
 import { SettingsPage } from "./pages/SettingsPage";
 import ProfilePage from "./pages/ProfilePage";
 
@@ -63,6 +64,17 @@ const App = () => (
                 </EmailVerificationChecker>
               </ProtectedRoute>
             } 
+          />
+
+          <Route 
+            path="/ats-checker" 
+            element={
+              <ProtectedRoute>
+                <EmailVerificationChecker>
+                  <ATSChecker />
+                </EmailVerificationChecker>
+              </ProtectedRoute>
+            }
           />
           
           {/* Verification page */}

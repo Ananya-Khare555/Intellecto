@@ -91,7 +91,11 @@
 import React from 'react';
 import { Video, Plus, Settings, BarChart3 } from 'lucide-react';
 import { InterviewIcon, CodingIcon, AnalyticsIcon, CalendarIcon } from './AnimatedSVGs';
+<<<<<<< HEAD
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
+=======
+import { useNavigate } from 'react-router-dom';
+>>>>>>> origin/ananya
 
 interface ActionCardProps {
   title: string;
@@ -130,7 +134,11 @@ const ActionCard: React.FC<ActionCardProps> = ({
 );
 
 export const QuickActions: React.FC = () => {
+<<<<<<< HEAD
   const navigate = useNavigate(); // Initialize the navigate function
+=======
+  const navigate = useNavigate();
+>>>>>>> origin/ananya
 
   const actions = [
     {
@@ -158,12 +166,21 @@ export const QuickActions: React.FC = () => {
       onClick: () => console.log('My Progress clicked')
     },
     {
+<<<<<<< HEAD
       title: 'My Schedule',
       description: 'View upcoming interviews',
       icon: <Settings className="w-8 h-8 text-white" />,
       animatedIcon: <CalendarIcon className="w-16 h-16" />,
       delay: '0.4s',
       onClick: () => console.log('My Schedule clicked')
+=======
+      title: 'ATS Score Checker',
+      description: 'Check your resume ATS Score',
+      icon: <BarChart3 className="w-8 h-8 text-white" />,  // You can swap to another Lucide icon if you prefer
+      animatedIcon: <AnalyticsIcon className="w-16 h-16" />,
+      delay: '0.4s',
+      onClick: () => navigate("/ats-checker")
+>>>>>>> origin/ananya
     }
   ];
 
@@ -175,6 +192,10 @@ export const QuickActions: React.FC = () => {
           <ActionCard 
             key={index} 
             {...action}
+<<<<<<< HEAD
+=======
+            // onClick={() => console.log(`${action.title} clicked`)}
+>>>>>>> origin/ananya
           />
         ))}
       </div>

@@ -3328,6 +3328,7 @@ import { useNavigate } from 'react-router-dom';
 import { CodeEditor } from "./CodeEditor";
 import { InterviewProgress } from "./InterviewProgress";
 import { SpeakingStatus } from "./SpeakingStatus";
+import { TechnicalStage } from "./stages/TechnicalStage";
 
 interface Message {
   id: string;
@@ -3821,42 +3822,42 @@ export const InterviewPlatform = () => {
     );
   };
 
-  const TechnicalStage = () => {
-    return (
-      <div className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Technical Question</CardTitle>
-            <div className="text-sm text-muted-foreground">
-              Time remaining: {mcqTimeLeft}s
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">{sampleQuestion.question}</p>
-            <div className="space-y-2">
-              {sampleQuestion.options.map((option) => (
-                <Button
-                  key={option.id}
-                  variant={selectedOption === option.id ? "default" : "outline"}
-                  className="w-full justify-start"
-                  onClick={() => handleMCQAnswer(option.id)}
-                >
-                  {option.id}. {option.text}
-                </Button>
-              ))}
-            </div>
-            {selectedOption && (
-              <div className="mt-4 flex justify-end">
-                <Button onClick={handleMCQNext}>
-                  Next Question <ChevronRight className="h-4 w-4 ml-2" />
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  };
+  // const TechnicalStage = () => {
+  //   return (
+  //     <div className="space-y-4">
+  //       <Card>
+  //         <CardHeader>
+  //           <CardTitle>Technical Question</CardTitle>
+  //           <div className="text-sm text-muted-foreground">
+  //             Time remaining: {mcqTimeLeft}s
+  //           </div>
+  //         </CardHeader>
+  //         <CardContent>
+  //           <p className="mb-4">{sampleQuestion.question}</p>
+  //           <div className="space-y-2">
+  //             {sampleQuestion.options.map((option) => (
+  //               <Button
+  //                 key={option.id}
+  //                 variant={selectedOption === option.id ? "default" : "outline"}
+  //                 className="w-full justify-start"
+  //                 onClick={() => handleMCQAnswer(option.id)}
+  //               >
+  //                 {option.id}. {option.text}
+  //               </Button>
+  //             ))}
+  //           </div>
+  //           {selectedOption && (
+  //             <div className="mt-4 flex justify-end">
+  //               <Button onClick={handleMCQNext}>
+  //                 Next Question <ChevronRight className="h-4 w-4 ml-2" />
+  //               </Button>
+  //             </div>
+  //           )}
+  //         </CardContent>
+  //       </Card>
+  //     </div>
+  //   );
+  // };
 
   const BehavioralStage = ({ onComplete }: { onComplete: () => void }) => {
     return (
@@ -3911,7 +3912,8 @@ export const InterviewPlatform = () => {
       case 0:
         return <IntroductionStage onComplete={handleStageComplete} />;
       case 1:
-        return <TechnicalStage />;
+        <TechnicalStage onComplete={handleStageComplete} />
+        // return <TechnicalStage />;
       case 2:
         return (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -4075,12 +4077,12 @@ export const InterviewPlatform = () => {
             </div>
 
             {/* Current transcript */}
-            {isListening && (
+            {/* {isListening && (
               <div className="p-4 bg-muted/20 rounded-lg border border-muted">
                 <p className="text-sm text-muted-foreground">You're speaking...</p>
                 <p className="mt-2">{userTranscript || "Listening for your response..."}</p>
               </div>
-            )}
+            )} */}
 
             {/* Dynamic Interview Content */}
             {getCurrentStageContent()}

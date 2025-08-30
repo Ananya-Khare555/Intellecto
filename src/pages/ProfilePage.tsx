@@ -43,12 +43,12 @@ export default function ProfilePage() {
 
     // Original data states - these will hold the confirmed/saved data
     const [originalProfileData, setOriginalProfileData] = useState({
-        name: 'Alex Johnson',
+        name: 'Lakshya Saini',
         title: 'Senior Frontend Developer',
-        email: 'alex.johnson@example.com',
-        phone: '+1 (555) 123-4567',
-        location: 'San Francisco, CA',
-        bio: 'Passionate frontend developer with 7+ years of experience building responsive and accessible web applications. Specialized in React ecosystem and modern JavaScript frameworks.'
+        email: 'lakshyasainidev@gmail.com',
+        phone: '',
+        location: '',
+        bio: 'Passionate frontend developer with 2+ years of experience building responsive and accessible web applications. Specialized in React ecosystem and modern JavaScript frameworks.'
     });
     const [originalSkills, setOriginalSkills] = useState<Skill[]>([
         { id: '1', name: 'React', level: 90 },

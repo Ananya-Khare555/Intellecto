@@ -80,6 +80,10 @@
 // };
 
 
+
+
+
+
 import { Mic, Bot } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -124,7 +128,7 @@ export const SpeakingStatus = ({ isAISpeaking, isUserSpeaking }: SpeakingStatusP
           </div>
 
           {/* Divider */}
-          <div className="h-8 w-px bg-border" />
+          <div className="h-8 w-px bg-border mx-6" />
 
           {/* User Speaking Status */}
           <div className="flex items-center gap-3">

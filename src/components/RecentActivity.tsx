@@ -82,10 +82,10 @@ export const RecentActivity: React.FC = () => {
         <h2 className="text-xl font-bold text-foreground">Recent Activity</h2>
         <span className="text-sm text-muted-foreground">Last 24 hours</span>
       </div>
-      
+
       <div className="space-y-4">
         {activities.map((activity, index) => (
-          <div 
+          <div
             key={activity.id}
             className={`flex items-start space-x-4 p-4 rounded-lg border transition-all duration-300 hover-lift ${getActivityColor(activity.type)} animate-slide-right`}
             style={{ animationDelay: `${0.7 + index * 0.1}s` }}
@@ -95,7 +95,7 @@ export const RecentActivity: React.FC = () => {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-foreground truncate">
+                <h3 className="text-sm font-semibold text-black truncate">
                   {activity.candidateName}
                 </h3>
                 <span className="text-xs text-muted-foreground">{activity.timestamp}</span>
@@ -107,8 +107,8 @@ export const RecentActivity: React.FC = () => {
             </div>
           </div>
         ))}
-      </div>
-      
+      </div>  
+
       <div className="mt-6 pt-4 border-t border-border">
         <button className="w-full py-3 rounded-lg border border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-500 hover-lift hover-scale">
           View All My Activity

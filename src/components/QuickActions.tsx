@@ -1,6 +1,7 @@
 import React from 'react';
 import { Video, Plus, Settings, BarChart3 } from 'lucide-react';
 import { InterviewIcon, CodingIcon, AnalyticsIcon, CalendarIcon } from './AnimatedSVGs';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 
 interface ActionCardProps {
   title: string;
@@ -39,34 +40,40 @@ const ActionCard: React.FC<ActionCardProps> = ({
 );
 
 export const QuickActions: React.FC = () => {
+  const navigate = useNavigate();
+
   const actions = [
     {
       title: 'Join Interview',
       description: 'Join your scheduled interview session',
       icon: <Video className="w-8 h-8 text-white" />,
       animatedIcon: <InterviewIcon className="w-16 h-16" />,
-      delay: '0.1s'
+      delay: '0.1s',
+      onClick: () => navigate('/interview-window') // Add navigation here
     },
     {
       title: 'Practice Coding',
       description: 'Practice with coding challenges',
       icon: <Plus className="w-8 h-8 text-white" />,
       animatedIcon: <CodingIcon className="w-16 h-16" />,
-      delay: '0.2s'
+      delay: '0.2s',
+      onClick: () => console.log('Practice Coding clicked')
     },
     {
       title: 'My Progress',
       description: 'View your interview performance',
       icon: <BarChart3 className="w-8 h-8 text-white" />,
       animatedIcon: <AnalyticsIcon className="w-16 h-16" />,
-      delay: '0.3s'
+      delay: '0.3s',
+      onClick: () => console.log('My Progress clicked')
     },
     {
-      title: 'My Schedule',
-      description: 'View upcoming interviews',
-      icon: <Settings className="w-8 h-8 text-white" />,
-      animatedIcon: <CalendarIcon className="w-16 h-16" />,
-      delay: '0.4s'
+      title: 'ATS Score Checker',
+      description: 'Check your resume ATS Score',
+      icon: <BarChart3 className="w-8 h-8 text-white" />,  // You can swap to another Lucide icon if you prefer
+      animatedIcon: <AnalyticsIcon className="w-16 h-16" />,
+      delay: '0.4s',
+      onClick: () => navigate("/ats-checker")
     }
   ];
 
@@ -78,7 +85,7 @@ export const QuickActions: React.FC = () => {
           <ActionCard 
             key={index} 
             {...action}
-            onClick={() => console.log(`${action.title} clicked`)}
+            // onClick={() => console.log(`${action.title} clicked`)}
           />
         ))}
       </div>

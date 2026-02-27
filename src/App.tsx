@@ -12,6 +12,8 @@ import { EmailVerificationChecker } from "./components/auth/EmailVerificationChe
 import { VerifyEmail } from "./pages/VerifyEmail";
 import { auth } from "./components/auth/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
+import { InterviewPlatform } from "./components/interview/InterviewPlatform";
+import ATSChecker from "./pages/ATSChecker";
 import { SettingsPage } from "./pages/SettingsPage";
 import ProfilePage from "./pages/ProfilePage";
 
@@ -48,7 +50,10 @@ const App = () => (
           {/* Email link authentication routes */}
           <Route path="/sendLink" element={<SendLink />} />
           <Route path="/finishSignIn" element={<FinishSignIn />} />
-          
+
+          {/* Interview Window routes */}
+          <Route path="/interview-window" element={<InterviewPlatform />} /> 
+
           {/* Protected dashboard route with email verification */}
           <Route 
             path="/dashboard" 
@@ -59,6 +64,17 @@ const App = () => (
                 </EmailVerificationChecker>
               </ProtectedRoute>
             } 
+          />
+
+          <Route 
+            path="/ats-checker" 
+            element={
+              <ProtectedRoute>
+                <EmailVerificationChecker>
+                  <ATSChecker />
+                </EmailVerificationChecker>
+              </ProtectedRoute>
+            }
           />
           
           {/* Verification page */}

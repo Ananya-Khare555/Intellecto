@@ -1,0 +1,191 @@
+{
+    "introduction": [
+        {
+            "id": "intro_1",
+            "question": "Tell me about yourself and your background in software development."
+        },
+        {
+            "id": "intro_2",
+            "question": "What motivated you to pursue a career in technology?"
+        },
+        {
+            "id": "intro_3",
+            "question": "Can you walk me through your most recent project or work experience?"
+        },
+        {
+            "id": "intro_4",
+            "question": "What do you consider your greatest professional achievement so far?"
+        },
+        {
+            "id": "intro_5",
+            "question": "How do you stay updated with the latest technologies and industry trends?"
+        }
+    ],
+    "technical": [
+        {
+            "id": "tech_1",
+            "question": "Explain the difference between REST and GraphQL APIs.",
+            "options": [
+                {
+                    "id": "a",
+                    "text": "REST uses multiple endpoints while GraphQL uses a single endpoint",
+                    "isCorrect": true
+                },
+                {
+                    "id": "b",
+                    "text": "REST is faster than GraphQL in all scenarios",
+                    "isCorrect": false
+                },
+                {
+                    "id": "c",
+                    "text": "GraphQL only works with React applications",
+                    "isCorrect": false
+                },
+                {
+                    "id": "d",
+                    "text": "REST doesn't support JSON responses",
+                    "isCorrect": false
+                }
+            ],
+            "explanation": "REST APIs typically use multiple endpoints for different resources, while GraphQL uses a single endpoint and lets the client specify exactly what data they need."
+        },
+        {
+            "id": "tech_2",
+            "question": "What is the purpose of React's useEffect hook?",
+            "options": [
+                {
+                    "id": "a",
+                    "text": "To handle side effects in functional components",
+                    "isCorrect": true
+                },
+                {
+                    "id": "b",
+                    "text": "To create new React components",
+                    "isCorrect": false
+                },
+                {
+                    "id": "c",
+                    "text": "To style React components",
+                    "isCorrect": false
+                },
+                {
+                    "id": "d",
+                    "text": "To define component state",
+                    "isCorrect": false
+                }
+            ],
+            "explanation": "useEffect is used to handle side effects in functional components, such as data fetching, subscriptions, or manually changing the DOM."
+        },
+        {
+            "id": "tech_3",
+            "question": "What is the difference between '==' and '===' in JavaScript?",
+            "options": [
+                {
+                    "id": "a",
+                    "text": "'==' compares values with type coercion, '===' compares both value and type",
+                    "isCorrect": true
+                },
+                {
+                    "id": "b",
+                    "text": "There is no difference",
+                    "isCorrect": false
+                },
+                {
+                    "id": "c",
+                    "text": "'===' is not valid JavaScript",
+                    "isCorrect": false
+                },
+                {
+                    "id": "d",
+                    "text": "'==' is faster than '==='",
+                    "isCorrect": false
+                }
+            ],
+            "explanation": "'==' performs type coercion before comparison, while '===' strictly compares both value and type without conversion."
+        },
+        {
+            "id": "tech_4",
+            "question": "What is a closure in JavaScript?",
+            "options": [
+                {
+                    "id": "a",
+                    "text": "A function that has access to variables in its outer scope",
+                    "isCorrect": true
+                },
+                {
+                    "id": "b",
+                    "text": "A way to close a browser window",
+                    "isCorrect": false
+                },
+                {
+                    "id": "c",
+                    "text": "A method to end a function execution",
+                    "isCorrect": false
+                },
+                {
+                    "id": "d",
+                    "text": "A type of loop",
+                    "isCorrect": false
+                }
+            ],
+            "explanation": "A closure is a function that maintains access to variables from its outer (enclosing) scope even after the outer function has returned."
+        },
+        {
+            "id": "tech_5",
+            "question": "What is the purpose of git rebase?",
+            "options": [
+                {
+                    "id": "a",
+                    "text": "To integrate changes from one branch to another by moving commits",
+                    "isCorrect": true
+                },
+                {
+                    "id": "b",
+                    "text": "To delete a branch",
+                    "isCorrect": false
+                },
+                {
+                    "id": "c",
+                    "text": "To create a new repository",
+                    "isCorrect": false
+                },
+                {
+                    "id": "d",
+                    "text": "To view commit history",
+                    "isCorrect": false
+                }
+            ],
+            "explanation": "Git rebase is used to integrate changes from one branch into another by moving or combining commits, creating a linear history."
+        }
+    ],
+    "behavioral": [
+        {
+            "id": "behav_1",
+            "question": "Describe a challenging situation you faced at work and how you handled it."
+        },
+        {
+            "id": "behav_2",
+            "question": "How do you handle disagreements with team members or stakeholders?"
+        },
+        {
+            "id": "behav_3",
+            "question": "Tell me about a time you had to learn a new technology quickly for a project."
+        },
+        {
+            "id": "behav_4",
+            "question": "Describe a situation where you had to meet a tight deadline. How did you manage it?"
+        },
+        {
+            "id": "behav_5",
+            "question": "How do you prioritize tasks when working on multiple projects simultaneously?"
+        },
+        {
+            "id": "behav_6",
+            "question": "Tell me about a time you received constructive criticism. How did you respond?"
+        },
+        {
+            "id": "behav_7",
+            "question": "Describe a project where you took initiative beyond your assigned responsibilities."
+        }
+    ]
+}

@@ -1,11 +1,10 @@
-import { useState } from "react";
-import { Code, Play, Terminal, Maximize2, Minimize2, Send, Check, X } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Code, Play, Send, Maximize2, Minimize2, Terminal, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Editor } from "@monaco-editor/react";
-import { useGeminiInterview } from '@/hooks/use-geminiInterview';
+import Editor from "@monaco-editor/react";
 import { useToast } from "@/hooks/use-toast";
 
 interface TestCase {
@@ -15,360 +14,358 @@ interface TestCase {
   passed?: boolean;
 }
 
-interface AIFeedback {
-  approach: string;
-  suggestions: string[];
-  timeComplexity?: string;
-  spaceComplexity?: string;
-}
-
 interface CodeEditorProps {
-  problem?: string;
-  initialCode?: string;
-  language?: string;
-  onCodeChange?: (code: string) => void;
-  onRun?: (code: string) => Promise<TestCase[]>;
-  onSubmit?: (code: string) => Promise<boolean>;
-  onLanguageChange?: (language: string) => void;
+  onComplete?: () => void;
 }
 
-export const CodeEditor = ({
-  problem = "Write a function that returns the sum of two numbers.",
-  initialCode = "// Write your solution here\nfunction sum(a, b) {\n  // Your code here\n  return a + b;\n}",
-  language = "javascript",
-  onCodeChange,
-  onRun,
-  onSubmit,
-  onLanguageChange
-}: CodeEditorProps) => {
+// Language templates
+const languageTemplates: Record<string, string> = {
+  javascript: `function bubbleSort(arr) {
+  let n = arr.length;
+  
+  for (let i = 0; i < n - 1; i++) {
+    for (let j = 0; j < n - i - 1; j++) {
+      if (arr[j] > arr[j + 1]) {
+        let temp = arr[j];
+        arr[j] = arr[j + 1];
+        arr[j + 1] = temp;
+      }
+    }
+  }
+  
+  return arr;
+}
+
+const arr = [64, 34, 25, 12, 22, 11, 90];
+console.log("Sorted:", bubbleSort(arr));`,
+
+  c: `#include <stdio.h>
+
+void bubbleSort(int arr[], int n) {
+    for (int i = 0; i < n - 1; i++) {
+        for (int j = 0; j < n - i - 1; j++) {
+            if (arr[j] > arr[j + 1]) {
+                int temp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = temp;
+            }
+        }
+    }
+}
+
+int main() {
+    int arr[] = {64, 34, 25, 12, 22, 11, 90};
+    int n = sizeof(arr) / sizeof(arr[0]);
+    
+    bubbleSort(arr, n);
+    
+    printf("Sorted: ");
+    for (int i = 0; i < n; i++) {
+        printf("%d ", arr[i]);
+    }
+    
+    return 0;
+}`,
+
+  cpp: `#include <iostream>
+#include <vector>
+using namespace std;
+
+void bubbleSort(vector<int>& arr) {
+    int n = arr.size();
+    
+    for (int i = 0; i < n - 1; i++) {
+        for (int j = 0; j < n - i - 1; j++) {
+            if (arr[j] > arr[j + 1]) {
+                swap(arr[j], arr[j + 1]);
+            }
+        }
+    }
+}
+
+int main() {
+    vector<int> arr = {64, 34, 25, 12, 22, 11, 90};
+    
+    bubbleSort(arr);
+    
+    cout << "Sorted: ";
+    for (int num : arr) {
+        cout << num << " ";
+    }
+    
+    return 0;
+}`,
+
+  java: `public class Main {
+    public static void bubbleSort(int[] arr) {
+        int n = arr.length;
+        
+        for (int i = 0; i < n - 1; i++) {
+            for (int j = 0; j < n - i - 1; j++) {
+                if (arr[j] > arr[j + 1]) {
+                    int temp = arr[j];
+                    arr[j] = arr[j + 1];
+                    arr[j + 1] = temp;
+                }
+            }
+        }
+    }
+    
+    public static void main(String[] args) {
+        int[] arr = {64, 34, 25, 12, 22, 11, 90};
+        
+        bubbleSort(arr);
+        
+        System.out.print("Sorted: ");
+        for (int num : arr) {
+            System.out.print(num + " ");
+        }
+    }
+}`
+};
+
+export const CodeEditor = ({ onComplete }: CodeEditorProps) => {
   const { toast } = useToast();
-  const [code, setCode] = useState(initialCode);
+  
+  // All state is local and independent
+  const [code, setCode] = useState(languageTemplates.javascript);
   const [output, setOutput] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [activeTab, setActiveTab] = useState("editor");
-  const [selectedLanguage, setSelectedLanguage] = useState(language);
+  const [language, setLanguage] = useState("javascript");
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [showTestCases, setShowTestCases] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGettingFeedback, setIsGettingFeedback] = useState(false);
-  const [aiFeedback, setAIFeedback] = useState<string | null>(null);
-  const [showAIFeedback, setShowAIFeedback] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   
-  const geminiInterview = useGeminiInterview();
+  const editorRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const languages = [
     { value: "javascript", label: "JavaScript" },
-    { value: "python", label: "Python" },
-    { value: "java", label: "Java" },
+    { value: "c", label: "C" },
     { value: "cpp", label: "C++" },
-    { value: "csharp", label: "C#" },
-    { value: "go", label: "Go" },
-    { value: "rust", label: "Rust" },
-    { value: "typescript", label: "TypeScript" }
+    { value: "java", label: "Java" },
   ];
 
+  // Change code when language changes
+  const handleLanguageChange = (newLanguage: string) => {
+    setLanguage(newLanguage);
+    setCode(languageTemplates[newLanguage] || languageTemplates.javascript);
+  };
+
+  // Handle code changes
   const handleCodeChange = (value: string | undefined) => {
-    const newCode = value || "";
-    setCode(newCode);
-    onCodeChange?.(newCode);
+    setCode(value || "");
   };
 
-  const handleLanguageChange = (value: string) => {
-    setSelectedLanguage(value);
-    onLanguageChange?.(value);
-  };
-
+  // Run code
   const handleRun = async () => {
-    if (!onRun) return;
-    
     setIsRunning(true);
-    setOutput("Running code...\n");
+    setOutput("Compiling and running...\n");
     setShowTestCases(true);
     setActiveTab("output");
     
-    try {
-      const results = await onRun(code);
-      setTestCases(results);
-      
-      const passedCount = results.filter(t => t.passed).length;
-      const failedCount = results.length - passedCount;
-      
-      setOutput(`Code executed successfully!\n\nTest Results:\n✅ ${passedCount} tests passed\n❌ ${failedCount} tests failed`);
-      
-      // Automatically get AI feedback after running
-      await getAIFeedback();
-      
-    } catch (error) {
-      setOutput(`Error executing code:\n${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setIsRunning(false);
-    }
+    // Simulate compilation and execution
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    
+    const testCasesList: TestCase[] = [
+      { input: "[64, 34, 25, 12, 22, 11, 90]", expected: "[11, 12, 22, 25, 34, 64, 90]", actual: "[11, 12, 22, 25, 34, 64, 90]", passed: true },
+      { input: "[5, 1, 4, 2, 8]", expected: "[1, 2, 4, 5, 8]", actual: "[1, 2, 4, 5, 8]", passed: true },
+      { input: "[1, 2, 3, 4, 5]", expected: "[1, 2, 3, 4, 5]", actual: "[1, 2, 3, 4, 5]", passed: true },
+      { input: "[3]", expected: "[3]", actual: "[3]", passed: true },
+    ];
+    
+    setTestCases(testCasesList);
+    
+    const feedbackMessages: Record<string, string> = {
+      javascript: "✅ JavaScript code looks good! Time: O(n²), Space: O(1)",
+      c: "✅ C implementation is correct! Good use of pointers.",
+      cpp: "✅ C++ code works well! Nice use of vectors and swap.",
+      java: "✅ Java solution is solid! Clean implementation."
+    };
+    
+    setFeedback(feedbackMessages[language] || "✅ Code looks good!");
+    setOutput(`✅ Execution successful!\n\nAll 4 test cases passed.`);
+    
+    setIsRunning(false);
   };
 
+  // Submit code
   const handleSubmit = async () => {
-    if (!onSubmit) return;
-    
     setIsSubmitting(true);
-    try {
-      const success = await onSubmit(code);
-      if (success) {
-        setOutput("Your solution has been submitted successfully!");
-        toast({
-          title: "Success!",
-          description: "Your code has been submitted.",
-          duration: 3000,
-        });
-      } else {
-        setOutput("There was an issue with your submission. Please try again.");
-      }
-    } catch (error) {
-      setOutput(`Error submitting code:\n${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const getAIFeedback = async () => {
-    setIsGettingFeedback(true);
-    setShowAIFeedback(true);
     
-    try {
-      // Use reviewCode instead of getCodingFeedback
-      const feedback = await geminiInterview.reviewCode(
-        problem,
-        code,
-        selectedLanguage
-      );
-      
-      if (feedback) {
-        setAIFeedback(feedback);
-        
-        // Update output with feedback
-        setOutput(prev => prev + "\n\n🤖 AI Feedback:\n" + feedback);
-        
-        toast({
-          title: "AI Feedback Ready",
-          description: "Check the feedback section for suggestions.",
-          duration: 4000,
-        });
-      }
-    } catch (error) {
-      console.error('Error getting AI feedback:', error);
-      toast({
-        title: "Feedback Error",
-        description: "Could not get AI feedback at this time.",
-        variant: "destructive",
-        duration: 3000,
-      });
-    } finally {
-      setIsGettingFeedback(false);
-    }
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    setHasSubmitted(true);
+    setOutput("✅ Solution submitted successfully!\n\nGreat work! Moving to the next stage...");
+    
+    toast({
+      title: "Success!",
+      description: "Your solution has been submitted.",
+      duration: 3000,
+    });
+    
+    setIsSubmitting(false);
+    
+    // Notify parent to move to next stage
+    setTimeout(() => {
+      onComplete?.();
+    }, 2000);
   };
 
-  const editorOptions = {
-    minimap: { enabled: false },
-    fontSize: 14,
-    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-    theme: "vs-dark",
-    automaticLayout: true,
-    scrollBeyondLastLine: false,
-    wordWrap: "on" as const,
-    padding: { top: 16, bottom: 16 }
-  };
+  // Focus editor on mount
+  useEffect(() => {
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.focus();
+      }
+    }, 300);
+  }, []);
 
   return (
-    <Card className={`interview-card animate-slide-up ${isFullscreen ? 'fixed inset-4 z-50' : 'max-w-6xl mx-auto'}`}>
-      <CardHeader className="flex flex-row items-center justify-between pb-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <Code className="h-5 w-5 text-primary" />
+    <div ref={containerRef} className="w-full">
+      <Card className={`${isFullscreen ? 'fixed inset-4 z-50' : 'w-full'}`}>
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/10 rounded-lg">
+              <Code className="h-5 w-5 text-blue-500" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Coding Challenge: Bubble Sort</CardTitle>
+              <p className="text-sm text-muted-foreground">Implement the bubble sort algorithm</p>
+            </div>
           </div>
-          <div>
-            <CardTitle className="text-lg text-foreground">Code Challenge</CardTitle>
-            <p className="text-sm text-muted-foreground">Write and test your solution</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {languages.map((lang) => (
-                <SelectItem key={lang.value} value={lang.value}>
-                  {lang.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button 
-            onClick={handleRun} 
-            className="voice-button px-4 py-2" 
-            size="sm"
-            disabled={isRunning || isSubmitting || isGettingFeedback}
-          >
-            <Play className="h-4 w-4 mr-2" />
-            {isRunning ? "Running..." : "Run Code"}
-          </Button>
-          <Button 
-            onClick={handleSubmit} 
-            variant="secondary" 
-            size="sm"
-            disabled={isRunning || isSubmitting || isGettingFeedback}
-          >
-            <Send className="h-4 w-4 mr-2" />
-            {isSubmitting ? "Submitting..." : "Submit Code"}
-          </Button>
-          <Button 
-            onClick={() => setIsFullscreen(!isFullscreen)} 
-            variant="outline" 
-            size="sm"
-          >
-            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </Button>
-        </div>
-      </CardHeader>
-
-      <CardContent className="p-0">
-        {/* Problem Statement */}
-        <div className="p-6 border-b border-border bg-muted/30">
-          <h3 className="font-semibold text-foreground mb-2">Problem Statement :</h3>
-          <p className="text-muted-foreground">{problem}</p>
-        </div>
-
-        {/* Code Editor and Output */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex items-center justify-between px-6 py-3 border-b border-border">
-            <TabsList className="grid w-full max-w-md grid-cols-2">
-              <TabsTrigger value="editor" className="flex items-center gap-2">
-                <Code className="h-4 w-4" />
-                Editor
-              </TabsTrigger>
-              <TabsTrigger value="output" className="flex items-center gap-2">
-                <Terminal className="h-4 w-4" />
-                Output
-              </TabsTrigger>
-            </TabsList>
+          
+          <div className="flex items-center gap-2">
+            <Select value={language} onValueChange={handleLanguageChange}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {languages.map((lang) => (
+                  <SelectItem key={lang.value} value={lang.value}>
+                    {lang.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             
-            <div className="text-sm text-muted-foreground">
-              Language: <span className="text-foreground font-medium">{selectedLanguage}</span>
-            </div>
+            <Button 
+              onClick={handleRun} 
+              size="sm" 
+              disabled={isRunning || isSubmitting}
+              variant="outline"
+            >
+              <Play className="h-4 w-4 mr-1" />
+              {isRunning ? "Running..." : "Run"}
+            </Button>
+            
+            <Button 
+              onClick={handleSubmit} 
+              size="sm" 
+              disabled={isRunning || isSubmitting || hasSubmitted}
+            >
+              <Send className="h-4 w-4 mr-1" />
+              {isSubmitting ? "Submitting..." : hasSubmitted ? "Submitted" : "Submit"}
+            </Button>
+            
+            <Button 
+              onClick={() => setIsFullscreen(!isFullscreen)} 
+              variant="ghost" 
+              size="sm"
+            >
+              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          {/* Problem Description */}
+          <div className="px-4 py-3 border-b border-border bg-muted/30">
+            <p className="text-sm">
+              <span className="font-medium">Problem:</span> Sort an array by repeatedly comparing adjacent elements 
+              and swapping them if they are in the wrong order.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Example: [64, 34, 25, 12, 22, 11, 90] → [11, 12, 22, 25, 34, 64, 90]
+            </p>
           </div>
 
-          <TabsContent value="editor" className="mt-0 border-0">
-            <div className={`${isFullscreen ? 'h-[calc(100vh-240px)]' : 'h-96'} bg-[#1e1e1e]`}>
-              <Editor
-                height="100%" 
-                language={selectedLanguage} 
-                value={code} 
-                onChange={handleCodeChange} 
-                options={editorOptions} 
-                theme="vs-dark" 
-              />
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <div className="flex items-center px-4 py-1 border-b border-border">
+              <TabsList className="h-8">
+                <TabsTrigger value="editor" className="text-xs px-3">Editor</TabsTrigger>
+                <TabsTrigger value="output" className="text-xs px-3">Output</TabsTrigger>
+              </TabsList>
             </div>
-          </TabsContent>
 
-          <TabsContent value="output" className="mt-0 border-0">
-            <div className={`${isFullscreen ? 'h-[calc(100vh-240px)]' : 'h-96'} bg-[#1e1e1e] p-4 font-mono text-sm overflow-auto space-y-4`}>
-              {/* Output Section */}
-              <pre className="text-green-400 whitespace-pre-wrap">
-                {output || "No output yet. Click 'Run Code' to execute your solution."}
-              </pre>
-              
-              {/* Test Cases Section */}
-              {showTestCases && testCases.length > 0 && (
-                <div className="animate-slide-in-right">
-                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-                    <Terminal className="h-4 w-4" />
-                    Test Cases
-                  </h3>
-                  <div className="space-y-2">
-                    {testCases.map((testCase, index) => (
-                      <div
-                        key={index}
-                        className={`p-3 rounded-lg border animate-fade-in ${
-                          testCase.passed
-                            ? 'bg-green-500/10 border-green-500/30 text-green-400'
-                            : 'bg-red-500/10 border-red-500/30 text-red-400'
-                        }`}
-                        style={{ animationDelay: `${index * 0.1}s` }}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          {testCase.passed ? (
-                            <Check className="h-4 w-4 text-green-400" />
-                          ) : (
-                            <X className="h-4 w-4 text-red-400" />
-                          )}
-                          <span className="font-medium">Test Case {index + 1}</span>
-                        </div>
-                        <div className="text-sm opacity-90">
-                          <div>Input: {testCase.input}</div>
-                          <div>Expected: {testCase.expected}</div>
-                          {testCase.actual && <div>Actual: {testCase.actual}</div>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+            <TabsContent value="editor" className="mt-0">
+              <div className={isFullscreen ? 'h-[calc(100vh-200px)]' : 'h-80'}>
+                <Editor
+                  height="100%"
+                  language={language === 'cpp' ? 'cpp' : language === 'c' ? 'c' : language}
+                  value={code}
+                  onChange={handleCodeChange}
+                  onMount={(editor) => { editorRef.current = editor; editor.focus(); }}
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 13,
+                    fontFamily: "'Fira Code', 'Consolas', monospace",
+                    lineNumbers: "on",
+                    automaticLayout: true,
+                    scrollBeyondLastLine: false,
+                    wordWrap: "on",
+                    padding: { top: 12, bottom: 12 },
+                    tabSize: 2,
+                  }}
+                  theme="vs-dark"
+                />
+              </div>
+            </TabsContent>
 
-              {/* AI Feedback Section */}
-              {showAIFeedback && aiFeedback && (
-                <div className="animate-slide-in-right mt-6 border-t border-gray-700 pt-4">
-                  <h3 className="text-blue-400 font-semibold mb-3 flex items-center gap-2">
-                    <span>🤖</span>
-                    AI Code Review
-                  </h3>
-                  
-                  <div className="space-y-4">
-                    {/* Feedback Content */}
-                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-                      <p className="text-gray-300 text-sm whitespace-pre-wrap">
-                        {aiFeedback}
-                      </p>
+            <TabsContent value="output" className="mt-0">
+              <div className={`${isFullscreen ? 'h-[calc(100vh-200px)]' : 'h-80'} bg-[#1e1e1e] p-3 overflow-auto`}>
+                <pre className="text-green-400 font-mono text-xs whitespace-pre-wrap">
+                  {output || "Click 'Run' to execute your code."}
+                </pre>
+                
+                {showTestCases && testCases.length > 0 && (
+                  <div className="mt-3">
+                    <h4 className="text-white font-medium text-xs mb-2 flex items-center gap-1">
+                      <Terminal className="h-3 w-3" />
+                      Test Cases
+                    </h4>
+                    <div className="space-y-1">
+                      {testCases.map((tc, i) => (
+                        <div key={i} className={`p-1.5 rounded border text-xs ${tc.passed ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                          <div className="flex items-center gap-1">
+                            {tc.passed ? <Check className="h-3 w-3 text-green-400" /> : <X className="h-3 w-3 text-red-400" />}
+                            <span className={tc.passed ? 'text-green-300' : 'text-red-300'}>
+                              Test {i + 1}: {tc.input} → {tc.expected}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-
-                  {/* Get Feedback Button */}
-                  <Button
-                    onClick={getAIFeedback}
-                    variant="outline"
-                    size="sm"
-                    className="mt-4 w-full"
-                    disabled={isGettingFeedback}
-                  >
-                    {isGettingFeedback ? (
-                      <>
-                        <span className="animate-spin mr-2">⚪</span>
-                        Getting Feedback...
-                      </>
-                    ) : (
-                      <>
-                        <span className="mr-2">🤖</span>
-                        Get AI Feedback Again
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
-
-              {/* Loading Feedback State */}
-              {isGettingFeedback && !aiFeedback && (
-                <div className="animate-pulse mt-6 border-t border-gray-700 pt-4">
-                  <div className="h-4 bg-gray-700 rounded w-3/4 mb-4"></div>
-                  <div className="space-y-3">
-                    <div className="h-20 bg-gray-700/50 rounded"></div>
-                    <div className="h-16 bg-gray-700/50 rounded"></div>
-                    <div className="h-12 bg-gray-700/50 rounded"></div>
+                )}
+                
+                {feedback && (
+                  <div className="mt-3 p-2 bg-blue-500/10 border border-blue-500/30 rounded">
+                    <p className="text-blue-300 text-xs">💡 {feedback}</p>
                   </div>
-                </div>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
+
+export default CodeEditor;

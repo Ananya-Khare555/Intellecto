@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { Settings, Calendar, LogOut, CheckCircle2, Terminal, Mic, MicOff, ChevronRight, Loader2, Code2, ArrowRight } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { Calendar, LogOut, CheckCircle2, Mic, MicOff, Loader2, ArrowRight, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -9,7 +9,8 @@ import { useNavigate } from 'react-router-dom';
 import { CodeEditor } from "./CodeEditor";
 import { InterviewProgress } from "./InterviewProgress";
 import { SpeakingStatus } from "./SpeakingStatus";
-import { useGeminiInterview } from '@/hooks/use-geminiInterview';
+import { useSimpleInterview } from '@/hooks/useSimpleInterview';
+import { useAuth } from '../../hooks/useAuth';
 
 interface Message {
   id: string;
@@ -33,10 +34,17 @@ interface InterviewStep {
   current: boolean;
 }
 
+// Wrapper component for CodeEditor - defined OUTSIDE to prevent re-renders
+const CodingStageWrapper = ({ onComplete }: { onComplete: () => void }) => {
+  return <CodeEditor onComplete={onComplete} />;
+};
+
+const MemoizedCodingStage = React.memo(CodingStageWrapper);
+
 export const InterviewPlatform = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const gemini = useGeminiInterview();
+  const interviewHook = useSimpleInterview();
 
   // State
   const [currentStep, setCurrentStep] = useState(0);
@@ -50,69 +58,120 @@ export const InterviewPlatform = () => {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [interviewCompleted, setInterviewCompleted] = useState(false);
   const [activeTab, setActiveTab] = useState("interview");
-  
+  const { user } = useAuth();
+
+  const hasResume = true;
+  const userData = null;
+  const showUploadResume = false;
+  const isProcessingRef = useRef(false);
+  const lastProcessedTranscript = useRef<string>("");
+  const elapsedTimeRef = useRef(0);
+
   // MCQ state
   const [currentMCQ, setCurrentMCQ] = useState<any>(null);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [mcqTimeLeft, setMcqTimeLeft] = useState(30);
-  
+
   // Coding state
   const [aiFeedback, setAiFeedback] = useState<string>("");
+
+  // Development mode
+  const [devMode, setDevMode] = useState(true);
 
   // Refs
   const recognitionRef = useRef<any>(null);
   const synthRef = useRef<SpeechSynthesis>(window.speechSynthesis);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const mcqTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mcqTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const silenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSpeakingRef = useRef(false);
 
   // Interview steps
-  const interviewSteps: InterviewStep[] = [
+  const interviewSteps: InterviewStep[] = useMemo(() => [
     { id: '1', type: 'introduction', title: 'Introduction', completed: currentStep > 0, current: currentStep === 0 },
     { id: '2', type: 'technical', title: 'Technical MCQs', completed: currentStep > 1, current: currentStep === 1 },
     { id: '3', type: 'coding', title: 'Coding Challenge', completed: currentStep > 2, current: currentStep === 2 },
     { id: '4', type: 'behavioral', title: 'Behavioral', completed: currentStep > 3, current: currentStep === 3 },
     { id: '5', type: 'conclusion', title: 'Conclusion', completed: currentStep > 4, current: currentStep === 4 }
-  ];
+  ], [currentStep]);
 
-  // Initialize speech recognition
+  // Timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      elapsedTimeRef.current += 1;
+      setElapsedTime(elapsedTimeRef.current);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Speech recognition setup
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (SpeechRecognition) {
         recognitionRef.current = new SpeechRecognition();
-        recognitionRef.current.continuous = false;
+        recognitionRef.current.continuous = true;
         recognitionRef.current.interimResults = true;
         recognitionRef.current.lang = 'en-US';
-        
-        recognitionRef.current.onresult = (event: any) => {
-          const transcript = Array.from(event.results)
-            .map((result: any) => result[0].transcript)
-            .join('');
-          
-          setUserTranscript(transcript);
-          
-          // Clear existing timeout
-          if (silenceTimeoutRef.current) {
-            clearTimeout(silenceTimeoutRef.current);
-          }
-          
-          // Set new timeout to process after silence
-          silenceTimeoutRef.current = setTimeout(() => {
-            if (transcript && !isProcessing && !isAISpeaking) {
-              stopListening();
-              handleUserResponse(transcript);
-            }
-          }, 1500);
+        recognitionRef.current.maxAlternatives = 1;
+
+        let finalTranscript = '';
+        let silenceTimer: ReturnType<typeof setTimeout> | null = null;
+
+        recognitionRef.current.onstart = () => {
+          console.log('Speech recognition started');
+          finalTranscript = '';
+          setUserTranscript('');
         };
-        
+
+        recognitionRef.current.onresult = (event: any) => {
+          let interimTranscript = '';
+
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript + ' ';
+            } else {
+              interimTranscript += transcript;
+            }
+          }
+
+          const displayTranscript = finalTranscript + interimTranscript;
+          setUserTranscript(displayTranscript);
+
+          if (silenceTimer) {
+            clearTimeout(silenceTimer);
+          }
+
+          silenceTimer = setTimeout(() => {
+            const fullTranscript = finalTranscript.trim();
+            if (fullTranscript && !isProcessing && !isAISpeaking && !isProcessingRef.current) {
+              stopListening();
+              handleUserResponse(fullTranscript);
+            }
+            finalTranscript = '';
+          }, 2000);
+        };
+
         recognitionRef.current.onend = () => {
           setIsListening(false);
+          if (finalTranscript.trim() && !isProcessing && !isAISpeaking && !isProcessingRef.current) {
+            handleUserResponse(finalTranscript.trim());
+          }
+          finalTranscript = '';
         };
-        
+
         recognitionRef.current.onerror = (event: any) => {
           console.error('Speech error:', event.error);
           setIsListening(false);
+          if (event.error === 'network') {
+            setTimeout(() => {
+              if (!isProcessing && !isAISpeaking && !interviewCompleted) {
+                startListening();
+              }
+            }, 1000);
+          }
         };
       }
     }
@@ -122,15 +181,7 @@ export const InterviewPlatform = () => {
         clearTimeout(silenceTimeoutRef.current);
       }
     };
-  }, []);
-
-  // Timer
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setElapsedTime(prev => prev + 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+  }, [isProcessing, isAISpeaking, interviewCompleted]);
 
   // Start interview
   useEffect(() => {
@@ -162,21 +213,52 @@ export const InterviewPlatform = () => {
     };
   }, [currentStep, currentMCQ, selectedOption]);
 
-  // Auto-start listening when AI finishes speaking
+  // Auto-start listening
   useEffect(() => {
-    if (!isAISpeaking && !isProcessing && currentStep !== 1 && currentStep !== 2 && !interviewCompleted) {
+    if (!isAISpeaking && !isProcessing && !isProcessingRef.current &&
+      currentStep !== 1 && currentStep !== 2 && !interviewCompleted && !isListening) {
       const timer = setTimeout(() => {
         startListening();
-      }, 1000);
+      }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [isAISpeaking, isProcessing, currentStep, interviewCompleted]);
+  }, [isAISpeaking, isProcessing, currentStep, interviewCompleted, isListening]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (utteranceRef.current) {
+        synthRef.current.cancel();
+      }
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
+      if (mcqTimerRef.current) {
+        clearInterval(mcqTimerRef.current);
+      }
+    };
+  }, []);
 
   const startInterview = async () => {
     setIsProcessing(true);
-    const welcomeMessage = await gemini.startInterview();
+    interviewHook.initializeInterview();
+
+    const welcomeMessage = interviewHook.getWelcomeMessage();
     addMessage('ai', welcomeMessage);
     await speak(welcomeMessage);
+
+    await new Promise(resolve => setTimeout(resolve, 2500));
+
+    const firstQuestion = interviewHook.getFirstQuestion('introduction');
+    if (firstQuestion) {
+      addMessage('ai', firstQuestion);
+      await speak(firstQuestion);
+    } else {
+      const fallbackQuestion = "Tell me about yourself and your background in software development.";
+      addMessage('ai', fallbackQuestion);
+      await speak(fallbackQuestion);
+    }
+
     setIsProcessing(false);
   };
 
@@ -187,8 +269,12 @@ export const InterviewPlatform = () => {
         return;
       }
 
+      if (isSpeakingRef.current) {
+        synthRef.current.cancel();
+      }
+
       stopListening();
-      
+
       if (utteranceRef.current) {
         synthRef.current.cancel();
       }
@@ -197,31 +283,34 @@ export const InterviewPlatform = () => {
       utteranceRef.current.rate = 0.9;
       utteranceRef.current.pitch = 1;
       utteranceRef.current.volume = 1;
-      
+
       utteranceRef.current.onstart = () => {
+        isSpeakingRef.current = true;
         setIsAISpeaking(true);
       };
-      
+
       utteranceRef.current.onend = () => {
+        isSpeakingRef.current = false;
         setIsAISpeaking(false);
         resolve();
       };
-      
+
       utteranceRef.current.onerror = () => {
+        isSpeakingRef.current = false;
         setIsAISpeaking(false);
         resolve();
       };
-      
+
       synthRef.current.speak(utteranceRef.current);
     });
   };
 
   const startListening = () => {
-    if (recognitionRef.current && !isListening && !isAISpeaking && !isProcessing) {
+    if (recognitionRef.current && !isListening && !isAISpeaking && !isProcessing && !isProcessingRef.current) {
       try {
         recognitionRef.current.start();
         setIsListening(true);
-        setUserTranscript("");
+        setUserTranscript("Listening...");
       } catch (e) {
         console.error('Failed to start listening:', e);
       }
@@ -229,12 +318,12 @@ export const InterviewPlatform = () => {
   };
 
   const stopListening = () => {
-    if (recognitionRef.current && isListening) {
+    if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
         setIsListening(false);
       } catch (e) {
-        console.error('Failed to stop listening:', e);
+        console.log('Stop listening error:', e);
       }
     }
   };
@@ -248,29 +337,180 @@ export const InterviewPlatform = () => {
     }]);
   };
 
+  const generateConclusion = useCallback(async () => {
+    const conclusion = interviewHook.getConclusionMessage();
+    addMessage('ai', conclusion);
+    await speak(conclusion);
+    setIsProcessing(false);
+  }, [interviewHook]);
+
+  const finishInterview = useCallback(() => {
+    setInterviewCompleted(true);
+    stopListening();
+
+    toast({
+      title: "Interview Completed",
+      description: "Thank you for your participation",
+      duration: 3000,
+    });
+
+    setTimeout(() => {
+      navigate('/dashboard');
+    }, 3000);
+  }, [navigate, toast]);
+
+  const loadMCQ = useCallback(async () => {
+    setIsProcessing(true);
+
+    const mcq = interviewHook.generateMCQ(0);
+
+    if (mcq) {
+      setCurrentMCQ(mcq);
+      addMessage('ai', mcq.question);
+      await speak(mcq.question);
+    } else {
+      const dummyMCQ = {
+        question: "What is the difference between let and var in JavaScript?",
+        options: [
+          { id: "a", text: "let has block scope, var has function scope", isCorrect: true },
+          { id: "b", text: "There is no difference", isCorrect: false },
+          { id: "c", text: "var is newer than let", isCorrect: false },
+          { id: "d", text: "let cannot be reassigned", isCorrect: false }
+        ],
+        explanation: "let declarations are block-scoped while var declarations are function-scoped."
+      };
+      setCurrentMCQ(dummyMCQ);
+      addMessage('ai', dummyMCQ.question);
+      await speak(dummyMCQ.question);
+    }
+
+    setIsProcessing(false);
+  }, [interviewHook]);
+
+  const handleStageComplete = useCallback(async () => {
+    const currentStage = interviewSteps[currentStep].type;
+    const completionMessage = interviewHook.getStageCompletionMessage(currentStage);
+
+    addMessage('ai', completionMessage);
+    await speak(completionMessage);
+
+    if (currentStep < interviewSteps.length - 1) {
+      const nextStep = currentStep + 1;
+
+      setCurrentStep(nextStep);
+      setQuestionIndex(0);
+      setSelectedOption(null);
+      setCurrentMCQ(null);
+      setIsProcessing(false);
+
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      if (nextStep === 1) {
+        await loadMCQ();
+      } else if (nextStep === 2) {
+        setActiveTab("coding");
+        setIsProcessing(false);
+        const codingIntro = "Here's a coding challenge for you. Take your time to read the problem and implement your solution. You can run and test your code before submitting.";
+        addMessage('ai', codingIntro);
+        await speak(codingIntro);
+      } else if (nextStep === 3) {
+        setIsProcessing(true);
+        const firstBehavioralQuestion = interviewHook.getQuestionAtIndex('behavioral', 0);
+        if (firstBehavioralQuestion) {
+          addMessage('ai', firstBehavioralQuestion);
+          await speak(firstBehavioralQuestion);
+        }
+        setIsProcessing(false);
+      } else if (nextStep === 4) {
+        setIsProcessing(true);
+        await generateConclusion();
+        setIsProcessing(false);
+      }
+    } else {
+      await finishInterview();
+    }
+  }, [currentStep, interviewSteps, interviewHook, loadMCQ, generateConclusion, finishInterview]);
+
+  const askNextQuestion = useCallback(async () => {
+    const stage = interviewSteps[currentStep].type as 'introduction' | 'technical' | 'behavioral';
+    const totalQuestions = interviewHook.getStageQuestionCount(stage);
+    const nextIndex = questionIndex + 1;
+
+    if (nextIndex < totalQuestions) {
+      setQuestionIndex(nextIndex);
+
+      const nextQuestionText = interviewHook.getQuestionAtIndex(stage, nextIndex);
+
+      if (nextQuestionText) {
+        addMessage('ai', nextQuestionText);
+        await speak(nextQuestionText);
+        setIsProcessing(false);
+      } else {
+        setIsProcessing(false);
+        await handleStageComplete();
+      }
+    } else {
+      await handleStageComplete();
+    }
+  }, [currentStep, questionIndex, interviewSteps, interviewHook, handleStageComplete]);
+
   const handleUserResponse = async (response: string) => {
-    if (!response.trim() || isProcessing) return;
+    if (!response.trim() || isProcessing || isProcessingRef.current) {
+      return;
+    }
+
+    if (response === lastProcessedTranscript.current) {
+      return;
+    }
+
+    isProcessingRef.current = true;
+    setIsProcessing(true);
+    lastProcessedTranscript.current = response;
 
     stopListening();
     addMessage('user', response);
-    setIsProcessing(true);
     setUserTranscript("");
 
     try {
-      // Get current question
       const currentQuestion = messages.filter(m => m.type === 'ai').pop()?.content || '';
+      const stage = interviewSteps[currentStep].type as 'introduction' | 'technical' | 'behavioral';
 
-      // Process answer
-      const result = await gemini.submitAnswer(currentQuestion, response);
-      
-      // Show feedback
-      addMessage('ai', result.feedback);
-      await speak(result.feedback);
+      const feedbackResult = interviewHook.submitAnswer(currentQuestion, response, stage);
 
-      // Move to next question
-      setTimeout(() => {
-        askNextQuestion();
-      }, 2000);
+      addMessage('ai', feedbackResult.message);
+      await speak(feedbackResult.message);
+
+      if (feedbackResult.needsFollowUp) {
+        isProcessingRef.current = false;
+        setIsProcessing(false);
+        lastProcessedTranscript.current = "";
+
+        setTimeout(() => {
+          startListening();
+        }, 1000);
+
+        return;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      const totalQuestions = interviewHook.getStageQuestionCount(stage);
+      const nextIndex = questionIndex + 1;
+
+      if (nextIndex < totalQuestions) {
+        setQuestionIndex(nextIndex);
+
+        const nextQuestionText = interviewHook.getQuestionAtIndex(stage, nextIndex);
+
+        if (nextQuestionText) {
+          addMessage('ai', nextQuestionText);
+          await speak(nextQuestionText);
+        } else {
+          await handleStageComplete();
+        }
+      } else {
+        await handleStageComplete();
+      }
 
     } catch (error) {
       console.error('Error processing response:', error);
@@ -279,77 +519,24 @@ export const InterviewPlatform = () => {
         description: "Failed to process response",
         variant: "destructive"
       });
+    } finally {
+      isProcessingRef.current = false;
       setIsProcessing(false);
+      lastProcessedTranscript.current = "";
+      interviewHook.resetElaborationFlag();
     }
-  };
-
-  const askNextQuestion = async () => {
-    if (questionIndex < 2) {
-      // More questions in current stage
-      const nextIndex = questionIndex + 1;
-      setQuestionIndex(nextIndex);
-      
-      const question = await gemini.getNextQuestion(
-        interviewSteps[currentStep].type,
-        gemini.interviewState.answers
-      );
-      
-      addMessage('ai', question);
-      await speak(question);
-      setIsProcessing(false);
-    } else {
-      // Stage complete
-      handleStageComplete();
-    }
-  };
-
-  const handleStageComplete = () => {
-    if (currentStep < interviewSteps.length - 1) {
-      const nextStep = currentStep + 1;
-      setCurrentStep(nextStep);
-      setQuestionIndex(0);
-      setSelectedOption(null);
-      setCurrentMCQ(null);
-      
-      if (nextStep === 1) {
-        // Technical stage - load MCQ
-        loadMCQ();
-      } else if (nextStep === 2) {
-        // Coding stage
-        setActiveTab("coding");
-      } else if (nextStep === 3) {
-        // Behavioral stage
-        askNextQuestion();
-      } else if (nextStep === 4) {
-        // Conclusion
-        generateConclusion();
-      }
-      
-      setIsProcessing(false);
-    } else {
-      finishInterview();
-    }
-  };
-
-  const loadMCQ = async () => {
-    setIsProcessing(true);
-    const mcq = await gemini.generateMCQ();
-    if (mcq) {
-      setCurrentMCQ(mcq);
-    }
-    setIsProcessing(false);
   };
 
   const handleMCQAnswer = (optionId: string) => {
     if (selectedOption) return;
-    
+
     setSelectedOption(optionId);
     if (mcqTimerRef.current) {
       clearInterval(mcqTimerRef.current);
     }
 
     const option = currentMCQ.options.find((opt: any) => opt.id === optionId);
-    
+
     if (option?.isCorrect) {
       toast({
         title: "Correct!",
@@ -367,97 +554,121 @@ export const InterviewPlatform = () => {
     }
   };
 
-  const handleMCQNext = () => {
-    if (questionIndex < 2) {
-      setQuestionIndex(prev => prev + 1);
+  const handleMCQNext = async () => {
+    const totalQuestions = interviewHook.getStageQuestionCount('technical');
+
+    if (questionIndex + 1 < totalQuestions) {
+      const nextIndex = questionIndex + 1;
+      setQuestionIndex(nextIndex);
       setSelectedOption(null);
-      loadMCQ();
+
+      const mcq = interviewHook.generateMCQ(nextIndex);
+      if (mcq) {
+        setCurrentMCQ(mcq);
+        addMessage('ai', mcq.question);
+        await speak(mcq.question);
+      }
     } else {
-      handleStageComplete();
+      await handleStageComplete();
     }
   };
 
-  const handleMCQTimeout = () => {
+  const handleMCQTimeout = async () => {
     setSelectedOption('timeout');
     toast({
       title: "Time's up!",
       description: "Moving to next question",
       variant: "destructive",
     });
-    
-    setTimeout(() => {
-      if (questionIndex < 2) {
-        setQuestionIndex(prev => prev + 1);
-        setSelectedOption(null);
-        loadMCQ();
-      } else {
-        handleStageComplete();
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const totalQuestions = interviewHook.getStageQuestionCount('technical');
+
+    if (questionIndex + 1 < totalQuestions) {
+      const nextIndex = questionIndex + 1;
+      setQuestionIndex(nextIndex);
+      setSelectedOption(null);
+
+      const mcq = interviewHook.generateMCQ(nextIndex);
+      if (mcq) {
+        setCurrentMCQ(mcq);
+        addMessage('ai', mcq.question);
+        await speak(mcq.question);
       }
-    }, 2000);
+    } else {
+      await handleStageComplete();
+    }
   };
 
-  const handleCodeRun = async (code: string): Promise<TestCase[]> => {
-    return new Promise(resolve => {
-      setTimeout(() => {
-        resolve([
-          { input: "[-2,1,-3,4,-1,2,1,-5,4]", expected: "6", actual: "6", passed: true },
-          { input: "[1]", expected: "1", actual: "1", passed: true },
-          { input: "[-1,-2,-3]", expected: "-1", actual: "-1", passed: true },
-          { input: "[5,4,-1,7,8]", expected: "23", actual: "23", passed: true },
-        ]);
-      }, 1500);
-    });
-  };
+  // Stable callback for coding completion
+  const handleCodingComplete = useCallback(() => {
+    handleStageComplete();
+  }, [handleStageComplete]);
 
-  const handleCodeSubmit = async (code: string): Promise<boolean> => {
-    setIsProcessing(true);
-    
-    const feedback = await gemini.reviewCode(
-      "Implement Kadane's Algorithm to find maximum subarray sum",
-      code,
-      "javascript"
-    );
-    
-    setAiFeedback(feedback);
-    
-    toast({
-      title: "Code Submitted",
-      description: "AI feedback is ready",
-      duration: 4000,
-    });
-    
-    setIsProcessing(false);
-    return true;
-  };
+  // Memoized coding stage component - created ONCE
+  const codingStageComponent = useMemo(() => {
+    return <MemoizedCodingStage onComplete={handleCodingComplete} />;
+  }, [handleCodingComplete]);
 
-  const generateConclusion = async () => {
-    const totalAnswers = gemini.interviewState.answers.length;
-    const conclusion = `Thank you for completing the interview. You've answered ${totalAnswers} questions. Our team will review your responses and get back to you soon. Do you have any questions for me?`;
-    
-    addMessage('ai', conclusion);
-    await speak(conclusion);
-    setIsProcessing(false);
-  };
+  // Bypass function for development
+  const bypassCurrentStage = async () => {
+    if (interviewCompleted) return;
 
-  const finishInterview = () => {
-    setInterviewCompleted(true);
     stopListening();
-    
+    if (utteranceRef.current) {
+      synthRef.current.cancel();
+      setIsAISpeaking(false);
+    }
+    if (mcqTimerRef.current) {
+      clearInterval(mcqTimerRef.current);
+    }
+
+    setIsProcessing(true);
+
     toast({
-      title: "Interview Completed",
-      description: "Thank you for your participation",
-      duration: 3000,
+      title: "Development Mode",
+      description: `Bypassing ${interviewSteps[currentStep].title} stage...`,
+      duration: 2000,
     });
-    
-    setTimeout(() => {
-      navigate('/dashboard');
-    }, 3000);
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    if (currentStep === 1 && currentMCQ) {
+      setSelectedOption(null);
+      setCurrentMCQ(null);
+    }
+
+    if (currentStep < interviewSteps.length - 1) {
+      const nextStep = currentStep + 1;
+      setCurrentStep(nextStep);
+      setQuestionIndex(0);
+      setSelectedOption(null);
+      setCurrentMCQ(null);
+
+      addMessage('ai', `[Development Mode] Bypassed ${interviewSteps[currentStep].title} stage. Moving to ${interviewSteps[nextStep].title}.`);
+
+      if (nextStep === 1) {
+        loadMCQ();
+      } else if (nextStep === 2) {
+        setActiveTab("coding");
+      } else if (nextStep === 3) {
+        askNextQuestion();
+      } else if (nextStep === 4) {
+        generateConclusion();
+      }
+    } else {
+      await finishInterview();
+    }
+
+    setIsProcessing(false);
   };
 
+  // Stage components
   const IntroductionStage = () => (
     <Card>
       <CardHeader>
-        <CardTitle>Introduction Question {questionIndex + 1} of 3</CardTitle>
+        <CardTitle>Introduction Question {questionIndex + 1} of {interviewHook.getStageQuestionCount('introduction')}</CardTitle>
       </CardHeader>
       <CardContent>
         <p className="text-lg mb-4">
@@ -465,14 +676,25 @@ export const InterviewPlatform = () => {
         </p>
         {isListening && (
           <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
-            <p className="text-sm text-primary mb-2">🎤 Listening...</p>
-            <p className="italic">{userTranscript || "Speak now"}</p>
+            <p className="text-sm text-primary mb-2 flex items-center gap-2">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+              </span>
+              🎤 Listening... (Speak clearly)
+            </p>
+            <p className="italic text-foreground">
+              {userTranscript || "I'm listening, please speak..."}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              The AI will process your response after a brief pause
+            </p>
           </div>
         )}
         {isProcessing && (
           <div className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Processing...</span>
+            <span>Processing your response...</span>
           </div>
         )}
       </CardContent>
@@ -483,7 +705,7 @@ export const InterviewPlatform = () => {
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>Technical Question {questionIndex + 1} of 3</CardTitle>
+          <CardTitle>Technical Question {questionIndex + 1} of {interviewHook.getStageQuestionCount('technical')}</CardTitle>
           <div className="text-sm font-mono">{mcqTimeLeft}s</div>
         </div>
       </CardHeader>
@@ -508,7 +730,7 @@ export const InterviewPlatform = () => {
             {selectedOption && selectedOption !== 'timeout' && (
               <div className="mt-6 flex justify-end">
                 <Button onClick={handleMCQNext}>
-                  {questionIndex < 2 ? "Next Question" : "Complete Stage"}
+                  {questionIndex < interviewHook.getStageQuestionCount('technical') - 1 ? "Next Question" : "Complete Stage"}
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </div>
@@ -523,58 +745,10 @@ export const InterviewPlatform = () => {
     </Card>
   );
 
-  const CodingStage = () => (
-    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full max-w-md grid-cols-2">
-        <TabsTrigger value="problem">Problem</TabsTrigger>
-        <TabsTrigger value="coding">Code Editor</TabsTrigger>
-      </TabsList>
-      
-      <TabsContent value="problem">
-        <Card>
-          <CardHeader>
-            <CardTitle>Kadane's Algorithm</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p>Given an array of integers, find the contiguous subarray with the maximum sum.</p>
-            <div className="bg-muted p-4 rounded-lg">
-              <p className="font-semibold mb-2">Example:</p>
-              <p>Input: [-2, 1, -3, 4, -1, 2, 1, -5, 4]</p>
-              <p>Output: 6 (subarray [4, -1, 2, 1])</p>
-            </div>
-            <Button onClick={() => setActiveTab("coding")}>
-              Start Coding
-            </Button>
-          </CardContent>
-        </Card>
-      </TabsContent>
-      
-      <TabsContent value="coding">
-        <CodeEditor
-          problem="Implement Kadane's Algorithm"
-          initialCode="function maxSubarraySum(nums) {\n  // Your code here\n}"
-          language="javascript"
-          onRun={handleCodeRun}
-          onSubmit={handleCodeSubmit}
-        />
-        {aiFeedback && (
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle>AI Feedback</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="whitespace-pre-wrap">{aiFeedback}</p>
-            </CardContent>
-          </Card>
-        )}
-      </TabsContent>
-    </Tabs>
-  );
-
   const BehavioralStage = () => (
     <Card>
       <CardHeader>
-        <CardTitle>Behavioral Question {questionIndex + 1} of 3</CardTitle>
+        <CardTitle>Behavioral Question {questionIndex + 1} of {interviewHook.getStageQuestionCount('behavioral')}</CardTitle>
       </CardHeader>
       <CardContent>
         <p className="text-lg mb-4">
@@ -582,25 +756,27 @@ export const InterviewPlatform = () => {
         </p>
         {isListening && (
           <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
-            <p className="text-sm text-primary mb-2">🎤 Listening...</p>
-            <p className="italic">{userTranscript || "Speak now"}</p>
+            <p className="text-sm text-primary mb-2 flex items-center gap-2">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+              </span>
+              🎤 Listening... (Speak clearly)
+            </p>
+            <p className="italic text-foreground">
+              {userTranscript || "I'm listening, please speak..."}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              The AI will process your response after a brief pause
+            </p>
           </div>
         )}
-      </CardContent>
-    </Card>
-  );
-
-  const ConclusionStage = () => (
-    <Card>
-      <CardContent className="text-center py-12">
-        <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold mb-2">Interview Complete</h2>
-        <p className="text-muted-foreground mb-6">
-          Thank you for completing the interview
-        </p>
-        <Button onClick={finishInterview} size="lg">
-          Finish
-        </Button>
+        {isProcessing && (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Processing your response...</span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -622,9 +798,22 @@ export const InterviewPlatform = () => {
     switch (currentStep) {
       case 0: return <IntroductionStage />;
       case 1: return <TechnicalStage />;
-      case 2: return <CodingStage />;
+      case 2: return codingStageComponent;
       case 3: return <BehavioralStage />;
-      case 4: return <ConclusionStage />;
+      case 4: return (
+        <Card>
+          <CardContent className="text-center py-12">
+            <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-2">Interview Complete</h2>
+            <p className="text-muted-foreground mb-6">
+              Thank you for completing the interview
+            </p>
+            <Button onClick={finishInterview} size="lg">
+              Finish
+            </Button>
+          </CardContent>
+        </Card>
+      );
       default: return <IntroductionStage />;
     }
   };
@@ -639,41 +828,55 @@ export const InterviewPlatform = () => {
               AI Interview Platform
             </h1>
             <p className="text-muted-foreground mt-1">
-              Powered by Gemini AI
+              Powered by Intellecto
             </p>
           </div>
-          
+
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
               <Calendar className="h-4 w-4" />
               <span>{new Date().toLocaleDateString()}</span>
             </div>
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" disabled={interviewCompleted}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  End Interview
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>End Interview?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to end the interview? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={finishInterview}>
-                    End Interview
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+
+            {hasResume && (
+              <>
+                {devMode && !interviewCompleted && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={bypassCurrentStage}
+                    disabled={isProcessing || isAISpeaking}
+                    className="border-yellow-500 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-950"
+                  >
+                    <SkipForward className="h-4 w-4 mr-2" />
+                    Bypass Stage
+                  </Button>
+                )}
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" disabled={interviewCompleted}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      End Interview
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>End Interview?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to end the interview? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={finishInterview}>
+                        End Interview
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            )}
           </div>
         </div>
 
@@ -721,7 +924,9 @@ export const InterviewPlatform = () => {
             </div>
 
             {/* Current Stage */}
-            {getCurrentStage()}
+            <div key="stage-container">
+              {getCurrentStage()}
+            </div>
 
             {/* Message History */}
             {messages.length > 0 && (
@@ -734,11 +939,10 @@ export const InterviewPlatform = () => {
                     {messages.slice(-5).map((msg) => (
                       <div
                         key={msg.id}
-                        className={`p-2 rounded-lg ${
-                          msg.type === 'ai' 
-                            ? 'bg-primary/10 ml-4' 
-                            : 'bg-muted/20 mr-4'
-                        }`}
+                        className={`p-2 rounded-lg ${msg.type === 'ai'
+                          ? 'bg-primary/10 ml-4'
+                          : 'bg-muted/20 mr-4'
+                          }`}
                       >
                         <p className="text-xs text-muted-foreground">
                           {msg.type === 'ai' ? '🤖 AI' : '👤 You'} - {msg.timestamp.toLocaleTimeString()}

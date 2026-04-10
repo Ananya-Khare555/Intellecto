@@ -6,6 +6,7 @@ interface InterviewState {
   questionIndex: number;
   answers: string[];
   questions: string[];
+  userContext?: string; // Add user context to state
 }
 
 export const useGeminiInterview = () => {
@@ -18,12 +19,21 @@ export const useGeminiInterview = () => {
     questions: []
   });
 
-  const startInterview = useCallback(async () => {
+  // Modified startInterview to accept userContext parameter
+  const startInterview = useCallback(async (userContext?: string) => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      const welcomeMessage = await geminiService.startInterview();
+      // Store user context in state for future use
+      if (userContext) {
+        setInterviewState(prev => ({
+          ...prev,
+          userContext
+        }));
+      }
+
+      const welcomeMessage = await geminiService.startInterview(userContext);
       return welcomeMessage;
     } catch (err) {
       console.error('Error starting interview:', err);
@@ -34,44 +44,62 @@ export const useGeminiInterview = () => {
     }
   }, []);
 
+  // Modified getNextQuestion to use user context
   const getNextQuestion = useCallback(async (stage: string, previousAnswers: string[] = []) => {
     setIsLoading(true);
-    
+
     try {
-      const question = await geminiService.generateQuestion(stage, previousAnswers);
-      
+      const question = await geminiService.generateQuestion(
+        stage,
+        previousAnswers,
+        interviewState.userContext
+      );
+
       setInterviewState(prev => ({
         ...prev,
         stage,
         questions: [...prev.questions, question]
       }));
-      
+
       return question;
     } catch (err) {
       console.error('Error getting next question:', err);
-      
+
       // Use fallback question
       const stageKey = stage as keyof typeof FALLBACK_QUESTIONS;
       const questions = FALLBACK_QUESTIONS[stageKey] || FALLBACK_QUESTIONS.introduction;
-      const fallbackQuestion = questions[previousAnswers.length % questions.length];
-      
+      let fallbackQuestion = questions[previousAnswers.length % questions.length];
+
+      // Add personalization if context is available
+      if (interviewState.userContext && fallbackQuestion) {
+        const nameMatch = interviewState.userContext.match(/Name: ([^\n]+)/);
+        if (nameMatch) {
+          fallbackQuestion = `${fallbackQuestion} I see you're ${nameMatch[1]}. `;
+        }
+      }
+
       return fallbackQuestion;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [interviewState.userContext]);
 
+  // Modified submitAnswer to consider user context
   const submitAnswer = useCallback(async (question: string, answer: string) => {
     setIsLoading(true);
-    
+
     try {
-      const result = await geminiService.processAnswer(question, answer);
-      
+      const result = await geminiService.processAnswer(
+        question,
+        answer,
+        interviewState.userContext
+      );
+
       setInterviewState(prev => ({
         ...prev,
         answers: [...prev.answers, answer]
       }));
-      
+
       return result;
     } catch (err) {
       console.error('Error submitting answer:', err);
@@ -82,13 +110,24 @@ export const useGeminiInterview = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [interviewState.userContext]);
 
+  // Modified generateMCQ to use user context
   const generateMCQ = useCallback(async (topic?: string) => {
     setIsLoading(true);
-    
+
     try {
-      const mcq = await geminiService.generateMCQ(topic);
+      // If user context exists and no specific topic provided, use skills from context
+      let mcqTopic = topic;
+      if (!mcqTopic && interviewState.userContext) {
+        const skillsMatch = interviewState.userContext.match(/Skills:([\s\S]*?)(?=\n\n|\n[A-Z]|$)/);
+        if (skillsMatch && skillsMatch[1]) {
+          const skills = skillsMatch[1].trim().split('\n').slice(0, 3).join(', ');
+          mcqTopic = skills;
+        }
+      }
+
+      const mcq = await geminiService.generateMCQ(mcqTopic);
       return mcq;
     } catch (err) {
       console.error('Error generating MCQ:', err);
@@ -96,13 +135,19 @@ export const useGeminiInterview = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [interviewState.userContext]);
 
+  // Modified reviewCode to use user context
   const reviewCode = useCallback(async (problem: string, code: string, language: string) => {
     setIsLoading(true);
-    
+
     try {
-      const feedback = await geminiService.reviewCode(problem, code, language);
+      const feedback = await geminiService.reviewCode(
+        problem,
+        code,
+        language,
+        interviewState.userContext
+      );
       return feedback;
     } catch (err) {
       console.error('Error reviewing code:', err);
@@ -110,7 +155,7 @@ export const useGeminiInterview = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [interviewState.userContext]);
 
   const resetInterview = useCallback(() => {
     geminiService.clearContext();
@@ -123,7 +168,15 @@ export const useGeminiInterview = () => {
     setError(null);
   }, []);
 
-    return {
+  // Helper method to update user context
+  const updateUserContext = useCallback((userContext: string) => {
+    setInterviewState(prev => ({
+      ...prev,
+      userContext
+    }));
+  }, []);
+
+  return {
     isLoading,
     error,
     interviewState,
@@ -132,6 +185,7 @@ export const useGeminiInterview = () => {
     submitAnswer,
     generateMCQ,
     reviewCode,
-    resetInterview
+    resetInterview,
+    updateUserContext
   };
-};
+}; 

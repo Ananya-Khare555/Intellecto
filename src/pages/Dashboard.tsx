@@ -19,9 +19,11 @@ export const Dashboard: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="gradient-primary p-2 rounded-lg">
-                <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
-                  <span className="text-primary font-bold text-lg">⭐</span>
-                </div>
+                <img
+                  src="https://cdn-icons-png.flaticon.com/512/1006/1006363.png"
+                  alt="Intellecto Logo"
+                  className="w-6 h-6 object-contain"
+                />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Intellecto</h1>
@@ -46,7 +48,7 @@ export const Dashboard: React.FC = () => {
               </button>
 
               {/* User Menu */}
-              <button onClick={()=> navigate('/profile')} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-accent transition-all duration-300 hover-scale">
+              <button onClick={() => navigate('/profile')} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-accent transition-all duration-300 hover-scale">
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 gradient-primary rounded-full flex items-center justify-center">
                     <User className="w-4 h-4 text-white" />
